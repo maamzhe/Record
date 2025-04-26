@@ -358,6 +358,38 @@
       text-align: center;
       padding: 5px;
     }
+    
+    /* 新增自定义营养素样式 */
+    .nutrition-settings {
+      background-color: #f9f9f9;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 15px;
+      margin-top: 15px;
+      margin-bottom: 15px;
+    }
+    
+    .nutrition-settings h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 1.1rem;
+      color: var(--primary-color);
+    }
+    
+    .small-text {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 10px;
+    }
+    
+    .macros-list {
+      margin-left: 15px;
+      padding-left: 5px;
+    }
+    
+    .macros-list li {
+      margin-bottom: 5px;
+    }
   </style>
 </head>
 <body>
@@ -581,6 +613,24 @@
           <option value="very-active">非常活跃</option>
         </select>
       </div>
+      <!-- 新增自定义营养素设置 -->
+      <div class="nutrition-settings">
+        <h3>自定义营养素设置</h3>
+        <p class="small-text">根据您的健身目标，我们提供了推荐值，您也可以自行调整</p>
+        <div class="input-group">
+          <label for="new-protein-ratio">蛋白质 (g/kg体重):</label>
+          <input type="number" id="new-protein-ratio" min="0.5" max="3.0" step="0.1" value="2.0">
+        </div>
+        <div class="input-group">
+          <label for="new-carbs-ratio">碳水化合物 (g/kg体重):</label>
+          <input type="number" id="new-carbs-ratio" min="1.0" max="10.0" step="0.1" value="4.0">
+        </div>
+        <div class="input-group">
+          <label for="new-fat-ratio">脂肪 (g/kg体重):</label>
+          <input type="number" id="new-fat-ratio" min="0.5" max="2.5" step="0.1" value="1.0">
+        </div>
+        <button id="reset-nutrition-defaults" class="btn btn-secondary" type="button">重置为推荐值</button>
+      </div>
       <button id="create-user-btn" class="btn">创建用户</button>
       <button id="cancel-new-user-btn" class="btn btn-secondary">取消</button>
     </div>
@@ -635,6 +685,24 @@
           <option value="very-active">非常活跃</option>
         </select>
       </div>
+      <!-- 新增自定义营养素设置 -->
+      <div class="nutrition-settings">
+        <h3>自定义营养素设置</h3>
+        <p class="small-text">根据您的健身目标，我们提供了推荐值，您也可以自行调整</p>
+        <div class="input-group">
+          <label for="edit-protein-ratio">蛋白质 (g/kg体重):</label>
+          <input type="number" id="edit-protein-ratio" min="0.5" max="3.0" step="0.1">
+        </div>
+        <div class="input-group">
+          <label for="edit-carbs-ratio">碳水化合物 (g/kg体重):</label>
+          <input type="number" id="edit-carbs-ratio" min="1.0" max="10.0" step="0.1">
+        </div>
+        <div class="input-group">
+          <label for="edit-fat-ratio">脂肪 (g/kg体重):</label>
+          <input type="number" id="edit-fat-ratio" min="0.5" max="2.5" step="0.1">
+        </div>
+        <button id="edit-reset-nutrition-defaults" class="btn btn-secondary" type="button">重置为推荐值</button>
+      </div>
       <button id="save-profile-btn" class="btn">保存修改</button>
       <button id="cancel-edit-profile-btn" class="btn btn-secondary">取消</button>
     </div>
@@ -657,6 +725,40 @@ const firebaseConfig = {
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+
+    // 根据健身目标获取推荐的营养素比例
+    function getNutritionRatiosByGoal(goal) {
+      const nutritionRatios = {
+        'bulking': {
+          proteinRatio: 2.0, // g/kg 体重
+          carbsRatio: 5.0,   // g/kg 体重
+          fatRatio: 1.2      // g/kg 体重
+        },
+        'cutting': {
+          proteinRatio: 2.2,
+          carbsRatio: 3.0,
+          fatRatio: 1.0
+        },
+        'maintain': {
+          proteinRatio: 1.8,
+          carbsRatio: 4.0,
+          fatRatio: 1.1
+        }
+      };
+      
+      return nutritionRatios[goal] || nutritionRatios['maintain'];
+    }
+
+    // 更新目标选择时触发的事件处理函数
+    function updateNutritionRatiosByGoal(goalSelectId, proteinInputId, carbsInputId, fatInputId) {
+      const goalSelect = document.getElementById(goalSelectId);
+      const goal = goalSelect.value;
+      const ratios = getNutritionRatiosByGoal(goal);
+      
+      document.getElementById(proteinInputId).value = ratios.proteinRatio;
+      document.getElementById(carbsInputId).value = ratios.carbsRatio;
+      document.getElementById(fatInputId).value = ratios.fatRatio;
+    }
 
     // 全局数据
     const appData = {
@@ -736,6 +838,8 @@ const firebaseConfig = {
             } else {
               // 没有用户资料，显示创建新用户界面
               showModal('new-user-modal');
+              // 初始化默认营养素比例
+              updateNutritionRatiosByGoal('new-goal', 'new-protein-ratio', 'new-carbs-ratio', 'new-fat-ratio');
             }
           });
         } else {
@@ -1034,7 +1138,20 @@ const firebaseConfig = {
 
       // 用户选择事件
       document.getElementById('user-select').addEventListener('change', onUserSelect);
-      document.getElementById('new-user-btn').addEventListener('click', () => showModal('new-user-modal'));
+      document.getElementById('new-user-btn').addEventListener('click', () => {
+        // 重置表单并显示模态框
+        document.getElementById('new-username').value = '';
+        document.getElementById('new-password').value = '';
+        document.getElementById('new-height').value = '';
+        document.getElementById('new-weight').value = '';
+        document.getElementById('new-age').value = '';
+        document.getElementById('new-gender').value = 'male';
+        document.getElementById('new-goal').value = 'bulking';
+        document.getElementById('new-activity').value = 'moderate';
+        // 更新营养素比例默认值
+        updateNutritionRatiosByGoal('new-goal', 'new-protein-ratio', 'new-carbs-ratio', 'new-fat-ratio');
+        showModal('new-user-modal');
+      });
       document.getElementById('create-user-btn').addEventListener('click', createNewUser);
       document.getElementById('cancel-new-user-btn').addEventListener('click', () => hideModal('new-user-modal'));
 
@@ -1067,6 +1184,23 @@ const firebaseConfig = {
           const tabId = this.getAttribute('data-tab');
           switchTab(tabId);
         });
+      });
+
+      // 新增的营养素相关事件监听
+      document.getElementById('new-goal').addEventListener('change', function() {
+        updateNutritionRatiosByGoal('new-goal', 'new-protein-ratio', 'new-carbs-ratio', 'new-fat-ratio');
+      });
+      
+      document.getElementById('edit-goal').addEventListener('change', function() {
+        updateNutritionRatiosByGoal('edit-goal', 'edit-protein-ratio', 'edit-carbs-ratio', 'edit-fat-ratio');
+      });
+      
+      document.getElementById('reset-nutrition-defaults').addEventListener('click', function() {
+        updateNutritionRatiosByGoal('new-goal', 'new-protein-ratio', 'new-carbs-ratio', 'new-fat-ratio');
+      });
+      
+      document.getElementById('edit-reset-nutrition-defaults').addEventListener('click', function() {
+        updateNutritionRatiosByGoal('edit-goal', 'edit-protein-ratio', 'edit-carbs-ratio', 'edit-fat-ratio');
       });
     }
 
@@ -1136,6 +1270,9 @@ const firebaseConfig = {
         'very-active': '非常活跃'
       };
 
+      // 获取用户的营养素设置或默认值
+      const nutrition = user.nutrition || getNutritionRatiosByGoal(user.goal);
+
       userInfoElement.innerHTML = `
         <p><strong>用户名:</strong> ${user.username}</p>
         <p><strong>身高:</strong> ${user.height} cm</p>
@@ -1144,6 +1281,14 @@ const firebaseConfig = {
         <p><strong>性别:</strong> ${user.gender === 'male' ? '男' : '女'}</p>
         <p><strong>健身目标:</strong> ${goalText[user.goal]}</p>
         <p><strong>活动水平:</strong> ${activityText[user.activity]}</p>
+        <div class="nutrition-settings">
+          <h3>营养素设置:</h3>
+          <ul class="macros-list">
+            <li>蛋白质: ${nutrition.proteinRatio} g/kg体重 (约 ${Math.round(nutrition.proteinRatio * user.weight)} g/天)</li>
+            <li>碳水化合物: ${nutrition.carbsRatio} g/kg体重 (约 ${Math.round(nutrition.carbsRatio * user.weight)} g/天)</li>
+            <li>脂肪: ${nutrition.fatRatio} g/kg体重 (约 ${Math.round(nutrition.fatRatio * user.weight)} g/天)</li>
+          </ul>
+        </div>
       `;
     }
 
@@ -1161,8 +1306,14 @@ const firebaseConfig = {
       const gender = document.getElementById('new-gender').value;
       const goal = document.getElementById('new-goal').value;
       const activity = document.getElementById('new-activity').value;
+      
+      // 获取用户设置的营养素比例
+      const proteinRatio = parseFloat(document.getElementById('new-protein-ratio').value);
+      const carbsRatio = parseFloat(document.getElementById('new-carbs-ratio').value);
+      const fatRatio = parseFloat(document.getElementById('new-fat-ratio').value);
 
-      if (!username || isNaN(height) || isNaN(weight) || isNaN(age)) {
+      if (!username || isNaN(height) || isNaN(weight) || isNaN(age) || 
+          isNaN(proteinRatio) || isNaN(carbsRatio) || isNaN(fatRatio)) {
         alert('请填写所有必填字段！');
         return;
       }
@@ -1182,6 +1333,11 @@ const firebaseConfig = {
         gender,
         goal,
         activity,
+        nutrition: {
+          proteinRatio,
+          carbsRatio,
+          fatRatio
+        },
         createdAt: new Date().toISOString()
       };
 
@@ -1201,16 +1357,6 @@ const firebaseConfig = {
         loadUserData(savedUser);
         showElement('main-content');
         hideModal('new-user-modal');
-        
-        // 重置表单
-        document.getElementById('new-username').value = '';
-        document.getElementById('new-password').value = '';
-        document.getElementById('new-height').value = '';
-        document.getElementById('new-weight').value = '';
-        document.getElementById('new-age').value = '';
-        document.getElementById('new-gender').value = 'male';
-        document.getElementById('new-goal').value = 'bulking';
-        document.getElementById('new-activity').value = 'moderate';
       } catch (error) {
         console.error('创建用户出错:', error);
         alert('创建用户时发生错误，请重试!');
@@ -1231,6 +1377,12 @@ const firebaseConfig = {
       document.getElementById('edit-gender').value = user.gender;
       document.getElementById('edit-goal').value = user.goal;
       document.getElementById('edit-activity').value = user.activity;
+      
+      // 填充营养素比例
+      const nutrition = user.nutrition || getNutritionRatiosByGoal(user.goal);
+      document.getElementById('edit-protein-ratio').value = nutrition.proteinRatio;
+      document.getElementById('edit-carbs-ratio').value = nutrition.carbsRatio;
+      document.getElementById('edit-fat-ratio').value = nutrition.fatRatio;
 
       showModal('edit-profile-modal');
     }
@@ -1250,8 +1402,14 @@ const firebaseConfig = {
       const gender = document.getElementById('edit-gender').value;
       const goal = document.getElementById('edit-goal').value;
       const activity = document.getElementById('edit-activity').value;
+      
+      // 获取营养素比例
+      const proteinRatio = parseFloat(document.getElementById('edit-protein-ratio').value);
+      const carbsRatio = parseFloat(document.getElementById('edit-carbs-ratio').value);
+      const fatRatio = parseFloat(document.getElementById('edit-fat-ratio').value);
 
-      if (isNaN(height) || isNaN(weight) || isNaN(age)) {
+      if (isNaN(height) || isNaN(weight) || isNaN(age) || 
+          isNaN(proteinRatio) || isNaN(carbsRatio) || isNaN(fatRatio)) {
         alert('请填写所有必填字段！');
         return;
       }
@@ -1265,6 +1423,11 @@ const firebaseConfig = {
       updatedUser.gender = gender;
       updatedUser.goal = goal;
       updatedUser.activity = activity;
+      updatedUser.nutrition = {
+        proteinRatio,
+        carbsRatio,
+        fatRatio
+      };
       updatedUser.updatedAt = new Date().toISOString();
 
       try {
@@ -1518,6 +1681,14 @@ const firebaseConfig = {
       const user = appData.currentUser;
       const foods = dietRecord.foods;
       
+      // 获取用户的营养素设置或默认值
+      const nutrition = user.nutrition || getNutritionRatiosByGoal(user.goal);
+      
+      // 计算每日推荐摄入量
+      const dailyProtein = Math.round(nutrition.proteinRatio * user.weight);
+      const dailyCarbs = Math.round(nutrition.carbsRatio * user.weight);
+      const dailyFat = Math.round(nutrition.fatRatio * user.weight);
+      
       // 构建 prompt
       const goalText = {
         'bulking': '增肌',
@@ -1544,16 +1715,21 @@ const firebaseConfig = {
 - 健身目标: ${goalText[user.goal]}
 - 活动水平: ${activityText[user.activity]}
 
+我的每日营养素目标（这些是我的个人设定值）：
+- 蛋白质：${dailyProtein}g (${nutrition.proteinRatio}g/kg体重)
+- 碳水化合物：${dailyCarbs}g (${nutrition.carbsRatio}g/kg体重)
+- 脂肪：${dailyFat}g (${nutrition.fatRatio}g/kg体重)
+
 今天我吃了以下食物：
 ${foods.map(food => `- ${food.name} ${food.amount}`).join('\n')}
 
 请按以下格式回复：
 
-1. 给出推荐每日摄入量（请用具体数值，不要给范围）：
+1. 给出我个人设定的每日摄入量（使用我上面提供的具体数值）：
 - 卡路里：约XXXX大卡
-- 蛋白质：XXg（X-X.Xg/kg体重）
-- 碳水化合物：XXg（X-Xg/kg体重）
-- 脂肪：XXg（X.X-X.Xg/kg体重）
+- 蛋白质：${dailyProtein}g (${nutrition.proteinRatio}g/kg体重)
+- 碳水化合物：${dailyCarbs}g (${nutrition.carbsRatio}g/kg体重)
+- 脂肪：${dailyFat}g (${nutrition.fatRatio}g/kg体重)
 
 2. 今日已摄入量估算：
 - 详细列出每种食物的大致热量和营养素含量
@@ -1562,14 +1738,13 @@ ${foods.map(food => `- ${food.name} ${food.amount}`).join('\n')}
 3. 今日建议：
 - 针对三大营养素分别给出具体的增减建议（用+XXg或超标XXg的格式）
 
-4. 提供一个简单的表格，清晰显示三大营养素的推荐摄入量、今日已摄入量和建议调整量
-（如果今日摄入已经超过每日建议的量了（比如超了20g），那在今日建议里应该写超标20g。如果今日摄入量小于每日建议的量，那么在今日建议里应该写+xxg）：
+4. 提供一个简单的表格，清晰显示三大营养素的推荐摄入量、今日已摄入量和建议调整量：
 
 | 营养素 | 今日摄入 | 每日建议 | 今日建议 |
 |-------|---------|---------|---------|
-| 蛋白质 | XX g    | XX g    | =蛋白质每日建议的量-今日摄入的量 |
-| 碳水化合物 | XX g | XX g   | =碳水化合物每日建议的量-今日摄入的量 |
-| 脂肪   | XX g    | XX g    | =脂肪每日建议的量-今日摄入的量 |
+| 蛋白质 | XX g    | ${dailyProtein} g | +XXg或超标XXg |
+| 碳水化合物 | XX g | ${dailyCarbs} g | +XXg或超标XXg |
+| 脂肪   | XX g    | ${dailyFat} g    | +XXg或超标XXg |
 
 5. 详细分析及建议：
 - 分析当前饮食是否平衡
@@ -1596,9 +1771,9 @@ ${foods.map(food => `- ${food.name} ${food.amount}`).join('\n')}
             fat: nutritionData.todayFat
           },
           recommended: {
-            protein: nutritionData.recommendedProtein,
-            carbs: nutritionData.recommendedCarbs,
-            fat: nutritionData.recommendedFat
+            protein: `${dailyProtein}g`,
+            carbs: `${dailyCarbs}g`,
+            fat: `${dailyFat}g`
           },
           suggestions: {
             protein: nutritionData.proteinSuggestion,
@@ -2059,101 +2234,98 @@ ${foods.map(food => `- ${food.name} ${food.amount}`).join('\n')}
         window.macrosChart.destroy();
       }
       
-      window.macrosChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: '蛋白质 (g)',
-              data: proteinData,
-              backgroundColor: 'rgba(255, 87, 34, 0.7)',
-              borderColor: 'rgba(255, 87, 34, 1)',
-              borderWidth: 1
-            },
-            {
-              label: '碳水化合物 (g)',
-              data: carbsData,
-              backgroundColor: 'rgba(33, 150, 243, 0.7)',
-              borderColor: 'rgba(33, 150, 243, 1)',
-              borderWidth: 1
-            },
-            {
-              label: '脂肪 (g)',
-              data: fatData,
-              backgroundColor: 'rgba(255, 193, 7, 0.7)',
-              borderColor: 'rgba(255, 193, 7, 1)',
-              borderWidth: 1
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            x: {
-              stacked: false,
-              title: {
-                display: true,
-                text: '日期'
-              }
-            },
-            y: {
-              stacked: false,
-              beginAtZero: true,
-              title: {
-                display: true,
-                text: '克 (g)'
-              }
-            }
-          },
-          plugins: {
-            legend: {
-              position: 'top',
-            },
-            title: {
-              display: true,
-              text: '营养素摄入统计'
-            }
-          }
+window.macrosChart = new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: labels,
+    datasets: [
+      {
+        label: '蛋白质 (g)',
+        data: proteinData,
+        backgroundColor: 'rgba(255, 87, 34, 0.7)',
+        borderColor: 'rgba(255, 87, 34, 1)',
+        borderWidth: 1
+      },
+      {
+        label: '碳水化合物 (g)',
+        data: carbsData,
+        backgroundColor: 'rgba(33, 150, 243, 0.7)',
+        borderColor: 'rgba(33, 150, 243, 1)',
+        borderWidth: 1
+      },
+      {
+        label: '脂肪 (g)',
+        data: fatData,
+        backgroundColor: 'rgba(255, 193, 7, 0.7)',
+        borderColor: 'rgba(255, 193, 7, 1)',
+        borderWidth: 1
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    scales: {
+      x: {
+        stacked: false,
+        title: {
+          display: true,
+          text: '日期'
         }
-      });
-    }
-
-    // 切换标签
-    function switchTab(tabId) {
-      // 更新标签状态
-      document.querySelectorAll('.tab').forEach(tab => {
-        if (tab.getAttribute('data-tab') === tabId) {
-          tab.classList.add('active');
-        } else {
-          tab.classList.remove('active');
+      },
+      y: {
+        stacked: false,
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: '克 (g)'
         }
-      });
-
-      // 更新内容可见性
-      document.querySelectorAll('.tab-content').forEach(content => {
-        if (content.id === `${tabId}-tab`) {
-          content.classList.add('active');
-        } else {
-          content.classList.remove('active');
-        }
-      });
-
-      // 特定标签的额外操作
-      if (tabId === 'history') {
-        // 默认显示今天的历史记录
-        document.getElementById('history-date').value = appData.currentDate;
-        loadHistoryForDate();
-      } else if (tabId === 'stats') {
-        // 默认加载一周的统计
-        document.getElementById('stats-period').value = 'week';
-        hideElement('custom-date-range');
-        loadStats('week');
+      }
+    },
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: '营养素摄入统计'
       }
     }
+  }
+});
+}
 
-    // 初始化应用
-    window.addEventListener('DOMContentLoaded', initApp);
-  </script>
-</body>
-</html>
+// 切换标签
+function switchTab(tabId) {
+  // 更新标签状态
+  document.querySelectorAll('.tab').forEach(tab => {
+    if (tab.getAttribute('data-tab') === tabId) {
+      tab.classList.add('active');
+    } else {
+      tab.classList.remove('active');
+    }
+  });
+
+  // 更新内容可见性
+  document.querySelectorAll('.tab-content').forEach(content => {
+    if (content.id === `${tabId}-tab`) {
+      content.classList.add('active');
+    } else {
+      content.classList.remove('active');
+    }
+  });
+
+  // 特定标签的额外操作
+  if (tabId === 'history') {
+    // 默认显示今天的历史记录
+    document.getElementById('history-date').value = appData.currentDate;
+    loadHistoryForDate();
+  } else if (tabId === 'stats') {
+    // 默认加载一周的统计
+    document.getElementById('stats-period').value = 'week';
+    hideElement('custom-date-range');
+    loadStats('week');
+  }
+}
+
+// 初始化应用
+window.addEventListener('DOMContentLoaded', initApp);
