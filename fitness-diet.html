@@ -1,0 +1,2158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>健身饮食记录</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Firebase SDK 引入 -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <style>
+    :root {
+      --primary-color: #4CAF50;
+      --secondary-color: #388E3C;
+      --background-color: #f5f5f5;
+      --card-background: #ffffff;
+      --text-color: #333333;
+      --border-color: #dddddd;
+      --protein-color: #FF5722;
+      --carb-color: #2196F3;
+      --fat-color: #FFC107;
+    }
+
+    body {
+      font-family: 'Microsoft YaHei', sans-serif;
+      line-height: 1.6;
+      color: var(--text-color);
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: var(--background-color);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    h1, h2, h3 {
+      margin-top: 0;
+    }
+
+    .back-link {
+      text-decoration: none;
+      color: var(--primary-color);
+      font-weight: bold;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    @media (min-width: 768px) {
+      .container {
+        grid-template-columns: 300px 1fr;
+      }
+    }
+
+    .card {
+      background-color: var(--card-background);
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 8px 16px;
+      background-color: var(--primary-color);
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background-color: var(--secondary-color);
+    }
+
+    .btn-secondary {
+      background-color: #9E9E9E;
+    }
+
+    .btn-secondary:hover {
+      background-color: #757575;
+    }
+
+    .btn-danger {
+      background-color: #F44336;
+    }
+
+    .btn-danger:hover {
+      background-color: #D32F2F;
+    }
+
+    .input-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 1rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      background-color: var(--background-color);
+    }
+
+    .food-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+    }
+
+    .food-info {
+      flex-grow: 1;
+    }
+
+    .food-actions {
+      display: flex;
+      gap: 5px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background-color: var(--card-background);
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 500px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      z-index: 900;
+    }
+
+    .macro-stats {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 20px;
+    }
+
+    .macro-stat {
+      text-align: center;
+      padding: 10px;
+      border-radius: 4px;
+    }
+
+    .protein {
+      background-color: rgba(255, 87, 34, 0.1);
+      color: var(--protein-color);
+    }
+
+    .carbs {
+      background-color: rgba(33, 150, 243, 0.1);
+      color: var(--carb-color);
+    }
+
+    .fat {
+      background-color: rgba(255, 193, 7, 0.1);
+      color: var(--fat-color);
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .analysis-result {
+      white-space: pre-line;
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 15px;
+    }
+
+    .tab {
+      padding: 10px 15px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+
+    .tab.active {
+      border-bottom: 2px solid var(--primary-color);
+      color: var(--primary-color);
+      font-weight: bold;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    /* 新增样式 */
+    .analysis-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    .analysis-table th, .analysis-table td {
+      padding: 10px;
+      border: 1px solid var(--border-color);
+    }
+
+    .analysis-table th {
+      background-color: var(--background-color);
+      font-weight: bold;
+    }
+
+    .analysis-table .nutrient-row {
+      font-weight: bold;
+    }
+
+    .analysis-table .protein-row {
+      background-color: rgba(255, 87, 34, 0.1);
+    }
+
+    .analysis-table .carbs-row {
+      background-color: rgba(33, 150, 243, 0.1);
+    }
+
+    .analysis-table .fat-row {
+      background-color: rgba(255, 193, 7, 0.1);
+    }
+
+    .positive-suggestion {
+      color: #F44336;
+      font-weight: bold;
+    }
+
+    .negative-suggestion {
+      color: #4CAF50;
+      font-weight: bold;
+    }
+
+    .error-message {
+      color: #F44336;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    /* 新增登录/注册样式 */
+    .auth-container {
+      max-width: 400px;
+      margin: 40px auto;
+      padding: 20px;
+      background-color: var(--card-background);
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .auth-toggle {
+      text-align: center;
+      margin-top: 15px;
+    }
+
+    .auth-toggle a {
+      color: var(--primary-color);
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .auth-form-title {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .form-error {
+      color: #F44336;
+      font-size: 0.9rem;
+      margin-top: 5px;
+    }
+
+    .auth-status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .user-email {
+      font-weight: bold;
+    }
+
+    .logout-btn {
+      padding: 5px 10px;
+      font-size: 0.9rem;
+    }
+
+    .sync-status {
+      font-size: 0.8rem;
+      color: #757575;
+      text-align: center;
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>健身饮食记录</h1>
+    <div class="auth-status hidden" id="auth-status">
+      <span class="user-email" id="user-email"></span>
+      <button id="logout-btn" class="btn btn-secondary logout-btn">登出</button>
+    </div>
+    <a href="index.html" class="back-link">< 返回主页</a>
+  </div>
+
+  <!-- 登录/注册区域 -->
+  <div id="auth-container" class="auth-container">
+    <div id="login-form">
+      <h2 class="auth-form-title">登录您的账户</h2>
+      <div class="input-group">
+        <label for="login-email">电子邮箱:</label>
+        <input type="email" id="login-email" required>
+      </div>
+      <div class="input-group">
+        <label for="login-password">密码:</label>
+        <input type="password" id="login-password" required>
+      </div>
+      <div id="login-error" class="form-error hidden"></div>
+      <button id="login-btn" class="btn">登录</button>
+      <div class="auth-toggle">
+        <span>还没有账户? </span>
+        <a id="show-register">注册</a>
+      </div>
+    </div>
+    
+    <div id="register-form" class="hidden">
+      <h2 class="auth-form-title">创建新账户</h2>
+      <div class="input-group">
+        <label for="register-email">电子邮箱:</label>
+        <input type="email" id="register-email" required>
+      </div>
+      <div class="input-group">
+        <label for="register-password">密码:</label>
+        <input type="password" id="register-password" required>
+        <small>密码至少需要6个字符</small>
+      </div>
+      <div class="input-group">
+        <label for="register-confirm-password">确认密码:</label>
+        <input type="password" id="register-confirm-password" required>
+      </div>
+      <div id="register-error" class="form-error hidden"></div>
+      <button id="register-btn" class="btn">注册</button>
+      <div class="auth-toggle">
+        <span>已有账户? </span>
+        <a id="show-login">登录</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 用户选择区域 -->
+  <div id="user-selection" class="card hidden">
+    <h2>选择用户</h2>
+    <div class="input-group">
+      <label for="user-select">用户列表:</label>
+      <select id="user-select">
+        <option value="">-- 选择用户 --</option>
+      </select>
+    </div>
+    <button id="new-user-btn" class="btn">添加新用户</button>
+  </div>
+
+  <!-- 主要内容区域 -->
+  <div id="main-content" class="container hidden">
+    <div class="sidebar">
+      <div class="card">
+        <h3>用户信息</h3>
+        <div id="user-info"></div>
+        <button id="edit-profile-btn" class="btn">修改个人信息</button>
+      </div>
+
+      <div class="card">
+        <h3>添加食物</h3>
+        <div class="input-group">
+          <label for="food-name">食物名称:</label>
+          <input type="text" id="food-name" placeholder="例如: 鸡胸肉">
+        </div>
+        <div class="input-group">
+          <label for="food-amount">食物数量:</label>
+          <input type="text" id="food-amount" placeholder="例如: 100g 或 1把">
+        </div>
+        <button id="add-food-btn" class="btn">添加食物</button>
+      </div>
+
+      <div class="card">
+        <h3>快速添加</h3>
+        <div id="frequent-foods"></div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="card">
+        <div class="tabs">
+          <div class="tab active" data-tab="today">今日记录</div>
+          <div class="tab" data-tab="analysis">分析结果</div>
+          <div class="tab" data-tab="history">历史记录</div>
+          <div class="tab" data-tab="stats">数据统计</div>
+        </div>
+
+        <div id="today-tab" class="tab-content active">
+          <h3>今日食物记录 <span id="current-date"></span></h3>
+          <div id="food-list"></div>
+          <button id="analyze-btn" class="btn">分析营养摄入</button>
+          <div id="loading" class="loading">
+            <p>正在分析中，请稍候...</p>
+          </div>
+        </div>
+
+        <div id="analysis-tab" class="tab-content">
+          <h3>营养分析结果</h3>
+          <div id="analysis-summary"></div>
+          <div id="analysis-table-container"></div>
+          <div id="analysis-result" class="analysis-result"></div>
+        </div>
+
+        <div id="history-tab" class="tab-content">
+          <h3>历史记录</h3>
+          <div class="input-group">
+            <label for="history-date">选择日期:</label>
+            <input type="date" id="history-date">
+          </div>
+          <div id="history-content"></div>
+        </div>
+
+        <div id="stats-tab" class="tab-content">
+          <h3>营养摄入统计</h3>
+          <div class="input-group">
+            <label for="stats-period">统计周期:</label>
+            <select id="stats-period">
+              <option value="week">最近一周</option>
+              <option value="month">最近一个月</option>
+              <option value="custom">自定义范围</option>
+            </select>
+          </div>
+          <div id="custom-date-range" class="hidden">
+            <div class="input-group">
+              <label for="start-date">开始日期:</label>
+              <input type="date" id="start-date">
+            </div>
+            <div class="input-group">
+              <label for="end-date">结束日期:</label>
+              <input type="date" id="end-date">
+            </div>
+            <button id="apply-custom-range" class="btn">应用</button>
+          </div>
+          <canvas id="macros-chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sync-status" id="sync-status"></div>
+
+  <!-- 密码验证 Modal -->
+  <div id="password-verify-modal" class="modal">
+    <div class="modal-content">
+      <h2>输入密码</h2>
+      <p>该用户已设置密码，请输入密码以继续。</p>
+      <div class="input-group">
+        <label for="verify-password">密码:</label>
+        <input type="password" id="verify-password" required>
+      </div>
+      <div id="password-error" class="error-message hidden">密码错误，请重试！</div>
+      <button id="verify-password-btn" class="btn">验证</button>
+      <button id="cancel-verify-btn" class="btn btn-secondary">取消</button>
+    </div>
+  </div>
+
+  <!-- 新用户 Modal -->
+  <div id="new-user-modal" class="modal">
+    <div class="modal-content">
+      <h2>创建新用户</h2>
+      <div class="input-group">
+        <label for="new-username">用户名:</label>
+        <input type="text" id="new-username" required>
+      </div>
+      <div class="input-group">
+        <label for="new-password">密码 (可选):</label>
+        <input type="password" id="new-password">
+      </div>
+      <div class="input-group">
+        <label for="new-height">身高 (cm):</label>
+        <input type="number" id="new-height" min="100" max="250" required>
+      </div>
+      <div class="input-group">
+        <label for="new-weight">体重 (kg):</label>
+        <input type="number" id="new-weight" min="30" max="200" required>
+      </div>
+      <div class="input-group">
+        <label for="new-age">年龄:</label>
+        <input type="number" id="new-age" min="12" max="100" required>
+      </div>
+      <div class="input-group">
+        <label for="new-gender">性别:</label>
+        <select id="new-gender" required>
+          <option value="male">男</option>
+          <option value="female">女</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="new-goal">健身目标:</label>
+        <select id="new-goal" required>
+          <option value="bulking">增肌</option>
+          <option value="cutting">减脂</option>
+          <option value="maintain">维持</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="new-activity">活动水平:</label>
+        <select id="new-activity" required>
+          <option value="sedentary">久坐少动</option>
+          <option value="light">轻度活动</option>
+          <option value="moderate">中度活动</option>
+          <option value="active">高度活动</option>
+          <option value="very-active">非常活跃</option>
+        </select>
+      </div>
+      <button id="create-user-btn" class="btn">创建用户</button>
+      <button id="cancel-new-user-btn" class="btn btn-secondary">取消</button>
+    </div>
+  </div>
+
+  <!-- 编辑个人信息 Modal -->
+  <div id="edit-profile-modal" class="modal">
+    <div class="modal-content">
+      <h2>编辑个人信息</h2>
+      <div class="input-group">
+        <label for="edit-username">用户名:</label>
+        <input type="text" id="edit-username" disabled>
+      </div>
+      <div class="input-group">
+        <label for="edit-password">更改密码 (可选):</label>
+        <input type="password" id="edit-password" placeholder="留空则保持不变">
+      </div>
+      <div class="input-group">
+        <label for="edit-height">身高 (cm):</label>
+        <input type="number" id="edit-height" min="100" max="250" required>
+      </div>
+      <div class="input-group">
+        <label for="edit-weight">体重 (kg):</label>
+        <input type="number" id="edit-weight" min="30" max="200" required>
+      </div>
+      <div class="input-group">
+        <label for="edit-age">年龄:</label>
+        <input type="number" id="edit-age" min="12" max="100" required>
+      </div>
+      <div class="input-group">
+        <label for="edit-gender">性别:</label>
+        <select id="edit-gender" required>
+          <option value="male">男</option>
+          <option value="female">女</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="edit-goal">健身目标:</label>
+        <select id="edit-goal" required>
+          <option value="bulking">增肌</option>
+          <option value="cutting">减脂</option>
+          <option value="maintain">维持</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="edit-activity">活动水平:</label>
+        <select id="edit-activity" required>
+          <option value="sedentary">久坐少动</option>
+          <option value="light">轻度活动</option>
+          <option value="moderate">中度活动</option>
+          <option value="active">高度活动</option>
+          <option value="very-active">非常活跃</option>
+        </select>
+      </div>
+      <button id="save-profile-btn" class="btn">保存修改</button>
+      <button id="cancel-edit-profile-btn" class="btn btn-secondary">取消</button>
+    </div>
+  </div>
+
+  <div id="overlay" class="overlay"></div>
+
+  <script>
+    // Firebase配置
+const firebaseConfig = {
+  apiKey: "AIzaSyAfDQWHWfypZWDcMX4UBQvnAa0DORqZqGA",
+  authDomain: "record-77777.firebaseapp.com",
+  projectId: "record-77777",
+  storageBucket: "record-77777.firebasestorage.app",
+  messagingSenderId: "868320807699",
+  appId: "1:868320807699:web:2b18183fad5be8aaede8e6"
+};
+
+    // 初始化Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // 全局数据
+    const appData = {
+      users: [],
+      currentUser: null,
+      currentDate: new Date().toISOString().split('T')[0],
+      frequentFoods: [],
+      dietHistory: {},
+      authenticated: false,
+      firebaseUser: null, // 保存当前登录的Firebase用户信息
+      syncStatus: null // 同步状态
+    };
+
+    // 通用工具函数
+    function generateId() {
+      return Math.random().toString(36).substr(2, 9);
+    }
+
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+    }
+
+    function showModal(modalId) {
+      document.getElementById(modalId).style.display = 'flex';
+      document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideModal(modalId) {
+      document.getElementById(modalId).style.display = 'none';
+      document.getElementById('overlay').style.display = 'none';
+    }
+
+    function showElement(elementId) {
+      document.getElementById(elementId).classList.remove('hidden');
+    }
+
+    function hideElement(elementId) {
+      document.getElementById(elementId).classList.add('hidden');
+    }
+
+    function showError(elementId, message) {
+      const errorElement = document.getElementById(elementId);
+      errorElement.textContent = message;
+      showElement(elementId);
+    }
+
+    function hideError(elementId) {
+      hideElement(elementId);
+    }
+
+    function updateSyncStatus(message) {
+      const statusElement = document.getElementById('sync-status');
+      statusElement.textContent = message;
+      
+      // 3秒后清除状态信息
+      setTimeout(() => {
+        statusElement.textContent = '';
+      }, 3000);
+    }
+
+    // 初始化应用
+    function initApp() {
+      // 设置身份验证状态监听器
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          // 用户已登录
+          appData.firebaseUser = user;
+          hideElement('auth-container');
+          showElement('auth-status');
+          document.getElementById('user-email').textContent = user.email;
+          
+          loadDataFromFirestore().then(() => {
+            if (appData.users.length > 0) {
+              showElement('user-selection');
+              populateUserSelect();
+            } else {
+              // 没有用户资料，显示创建新用户界面
+              showModal('new-user-modal');
+            }
+          });
+        } else {
+          // 用户未登录
+          appData.firebaseUser = null;
+          showElement('auth-container');
+          hideElement('auth-status');
+          hideElement('user-selection');
+          hideElement('main-content');
+        }
+      });
+
+      setupEventListeners();
+      document.getElementById('current-date').textContent = formatDate(appData.currentDate);
+    }
+
+    // 身份验证函数
+    function registerUser() {
+      const email = document.getElementById('register-email').value;
+      const password = document.getElementById('register-password').value;
+      const confirmPassword = document.getElementById('register-confirm-password').value;
+
+      hideError('register-error');
+
+      if (!email || !password) {
+        showError('register-error', '请填写所有必填字段');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        showError('register-error', '两次输入的密码不一致');
+        return;
+      }
+
+      if (password.length < 6) {
+        showError('register-error', '密码至少需要6个字符');
+        return;
+      }
+
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(userCredential => {
+          // 注册成功
+          console.log('注册成功:', userCredential.user);
+        })
+        .catch(error => {
+          // 注册失败
+          let errorMessage = '注册失败';
+          if (error.code === 'auth/email-already-in-use') {
+            errorMessage = '该邮箱已被注册';
+          } else if (error.code === 'auth/invalid-email') {
+            errorMessage = '邮箱格式无效';
+          } else if (error.code === 'auth/weak-password') {
+            errorMessage = '密码强度太弱';
+          }
+          showError('register-error', errorMessage);
+        });
+    }
+
+    function loginUser() {
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+
+      hideError('login-error');
+
+      if (!email || !password) {
+        showError('login-error', '请填写所有必填字段');
+        return;
+      }
+
+      auth.signInWithEmailAndPassword(email, password)
+        .then(userCredential => {
+          // 登录成功
+          console.log('登录成功:', userCredential.user);
+        })
+        .catch(error => {
+          // 登录失败
+          let errorMessage = '登录失败';
+          if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            errorMessage = '邮箱或密码错误';
+          } else if (error.code === 'auth/invalid-email') {
+            errorMessage = '邮箱格式无效';
+          } else if (error.code === 'auth/user-disabled') {
+            errorMessage = '该账户已被禁用';
+          }
+          showError('login-error', errorMessage);
+        });
+    }
+
+    function logoutUser() {
+      auth.signOut()
+        .then(() => {
+          // 登出成功
+          console.log('用户已登出');
+          // 清空应用数据
+          appData.users = [];
+          appData.currentUser = null;
+          appData.authenticated = false;
+          appData.frequentFoods = [];
+          appData.dietHistory = {};
+        })
+        .catch(error => {
+          console.error('登出错误:', error);
+        });
+    }
+
+    // Firebase数据操作函数
+    async function loadDataFromFirestore() {
+      if (!appData.firebaseUser) return;
+
+      updateSyncStatus('正在从云端同步数据...');
+      
+      try {
+        // 加载用户列表
+        const usersSnapshot = await db.collection('users')
+          .where('ownerUid', '==', appData.firebaseUser.uid)
+          .get();
+        
+        appData.users = [];
+        usersSnapshot.forEach(doc => {
+          appData.users.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+
+        // 加载常用食物
+        const foodsSnapshot = await db.collection('frequentFoods')
+          .where('ownerUid', '==', appData.firebaseUser.uid)
+          .get();
+        
+        appData.frequentFoods = [];
+        foodsSnapshot.forEach(doc => {
+          appData.frequentFoods.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+
+        // 注意：饮食历史记录会在用户选择后按需加载
+
+        updateSyncStatus('数据同步完成');
+      } catch (error) {
+        console.error('从Firestore加载数据出错:', error);
+        updateSyncStatus('数据同步失败');
+      }
+    }
+
+    async function loadUserDietHistory(userId) {
+      if (!appData.firebaseUser) return;
+
+      updateSyncStatus('正在加载饮食记录...');
+      
+      try {
+        const historySnapshot = await db.collection('dietHistory')
+          .where('userId', '==', userId)
+          .where('ownerUid', '==', appData.firebaseUser.uid)
+          .get();
+        
+        appData.dietHistory = {};
+        historySnapshot.forEach(doc => {
+          const record = doc.data();
+          appData.dietHistory[record.date] = {
+            id: doc.id,
+            ...record
+          };
+        });
+
+        updateSyncStatus('饮食记录加载完成');
+      } catch (error) {
+        console.error('加载饮食历史记录出错:', error);
+        updateSyncStatus('饮食记录加载失败');
+      }
+    }
+
+    // 保存数据到Firestore
+    async function saveUserToFirestore(user) {
+      if (!appData.firebaseUser) return;
+
+      const userData = { ...user };
+      // 添加所有者UID用于权限控制
+      userData.ownerUid = appData.firebaseUser.uid;
+      
+      // 检查是新增还是更新
+      if (userData.id && userData.id.length > 0) {
+        // 如果是现有用户，有id，则更新
+        try {
+          await db.collection('users').doc(userData.id).update(userData);
+          updateSyncStatus('用户资料已更新');
+        } catch (error) {
+          console.error('更新用户出错:', error);
+          updateSyncStatus('用户资料更新失败');
+        }
+      } else {
+        // 新用户，创建文档
+        try {
+          const docRef = await db.collection('users').add(userData);
+          userData.id = docRef.id; // 获取Firestore生成的ID
+          updateSyncStatus('新用户已创建');
+        } catch (error) {
+          console.error('创建用户出错:', error);
+          updateSyncStatus('创建用户失败');
+        }
+      }
+      
+      return userData;
+    }
+
+    async function saveFrequentFoodToFirestore(food) {
+      if (!appData.firebaseUser) return;
+
+      const foodData = { ...food };
+      foodData.ownerUid = appData.firebaseUser.uid;
+      
+      try {
+        if (foodData.id && foodData.id.length > 0) {
+          await db.collection('frequentFoods').doc(foodData.id).update(foodData);
+        } else {
+          const docRef = await db.collection('frequentFoods').add(foodData);
+          foodData.id = docRef.id;
+        }
+        updateSyncStatus('常用食物已保存');
+      } catch (error) {
+        console.error('保存常用食物出错:', error);
+        updateSyncStatus('保存常用食物失败');
+      }
+      
+      return foodData;
+    }
+
+    async function saveDietRecordToFirestore(dateKey, record) {
+      if (!appData.firebaseUser) return;
+
+      const recordData = { ...record };
+      recordData.ownerUid = appData.firebaseUser.uid;
+      recordData.date = dateKey;
+      
+      try {
+        if (recordData.id && recordData.id.length > 0) {
+          await db.collection('dietHistory').doc(recordData.id).update(recordData);
+        } else {
+          const docRef = await db.collection('dietHistory').add(recordData);
+          recordData.id = docRef.id;
+        }
+        updateSyncStatus('饮食记录已保存');
+      } catch (error) {
+        console.error('保存饮食记录出错:', error);
+        updateSyncStatus('保存饮食记录失败');
+      }
+      
+      return recordData;
+    }
+
+    async function deleteFoodFromFirestore(dateKey, index) {
+      if (!appData.firebaseUser) return;
+
+      const record = appData.dietHistory[dateKey];
+      
+      if (!record || !record.id) {
+        console.error('无法删除食物：记录ID不存在');
+        return;
+      }
+      
+      try {
+        // 复制食物数组并移除指定索引的项
+        const foods = [...record.foods];
+        foods.splice(index, 1);
+        
+        // 更新Firestore文档
+        await db.collection('dietHistory').doc(record.id).update({
+          foods: foods
+        });
+        
+        updateSyncStatus('食物已删除');
+      } catch (error) {
+        console.error('删除食物出错:', error);
+        updateSyncStatus('删除食物失败');
+      }
+    }
+
+    // 设置事件监听器
+    function setupEventListeners() {
+      // 身份验证事件
+      document.getElementById('show-register').addEventListener('click', () => {
+        hideElement('login-form');
+        showElement('register-form');
+      });
+      
+      document.getElementById('show-login').addEventListener('click', () => {
+        hideElement('register-form');
+        showElement('login-form');
+      });
+      
+      document.getElementById('login-btn').addEventListener('click', loginUser);
+      document.getElementById('register-btn').addEventListener('click', registerUser);
+      document.getElementById('logout-btn').addEventListener('click', logoutUser);
+
+      // 用户选择事件
+      document.getElementById('user-select').addEventListener('change', onUserSelect);
+      document.getElementById('new-user-btn').addEventListener('click', () => showModal('new-user-modal'));
+      document.getElementById('create-user-btn').addEventListener('click', createNewUser);
+      document.getElementById('cancel-new-user-btn').addEventListener('click', () => hideModal('new-user-modal'));
+
+      // 用户资料编辑事件
+      document.getElementById('edit-profile-btn').addEventListener('click', showEditProfileModal);
+      document.getElementById('save-profile-btn').addEventListener('click', saveUserProfile);
+      document.getElementById('cancel-edit-profile-btn').addEventListener('click', () => hideModal('edit-profile-modal'));
+
+      // 食物记录事件
+      document.getElementById('add-food-btn').addEventListener('click', addFoodItem);
+      document.getElementById('analyze-btn').addEventListener('click', analyzeDiet);
+
+      // 历史记录事件
+      document.getElementById('history-date').addEventListener('change', loadHistoryForDate);
+
+      // 统计周期选择事件
+      document.getElementById('stats-period').addEventListener('change', function() {
+        if (this.value === 'custom') {
+          showElement('custom-date-range');
+        } else {
+          hideElement('custom-date-range');
+          loadStats(this.value);
+        }
+      });
+      document.getElementById('apply-custom-range').addEventListener('click', applyCustomDateRange);
+
+      // 标签切换事件
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+          const tabId = this.getAttribute('data-tab');
+          switchTab(tabId);
+        });
+      });
+    }
+
+    // 填充用户选择下拉框
+    function populateUserSelect() {
+      const userSelect = document.getElementById('user-select');
+      
+      // 清空现有选项
+      while (userSelect.options.length > 1) {
+        userSelect.remove(1);
+      }
+
+      // 添加用户选项
+      appData.users.forEach(user => {
+        const option = document.createElement('option');
+        option.value = user.id;
+        option.textContent = user.username;
+        userSelect.appendChild(option);
+      });
+    }
+
+    // 用户选择变更处理
+    function onUserSelect(e) {
+      const userId = e.target.value;
+      
+      if (!userId) {
+        hideElement('main-content');
+        appData.currentUser = null;
+        appData.authenticated = false;
+        return;
+      }
+
+      const selectedUser = appData.users.find(user => user.id === userId);
+      
+      if (selectedUser) {
+        appData.currentUser = selectedUser;
+        appData.authenticated = true; // Firebase认证已替代本地密码认证
+        
+        // 加载用户数据
+        loadUserData(selectedUser);
+        showElement('main-content');
+        
+        // 加载用户的饮食历史记录
+        loadUserDietHistory(userId).then(() => {
+          loadFoodList();
+          loadFrequentFoods();
+          switchTab('today');
+        });
+      }
+    }
+
+    // 修改用户信息部分
+    function loadUserData(user) {
+      const userInfoElement = document.getElementById('user-info');
+      
+      const goalText = {
+        'bulking': '增肌',
+        'cutting': '减脂',
+        'maintain': '维持'
+      };
+
+      const activityText = {
+        'sedentary': '久坐少动',
+        'light': '轻度活动',
+        'moderate': '中度活动',
+        'active': '高度活动',
+        'very-active': '非常活跃'
+      };
+
+      userInfoElement.innerHTML = `
+        <p><strong>用户名:</strong> ${user.username}</p>
+        <p><strong>身高:</strong> ${user.height} cm</p>
+        <p><strong>体重:</strong> ${user.weight} kg</p>
+        <p><strong>年龄:</strong> ${user.age}</p>
+        <p><strong>性别:</strong> ${user.gender === 'male' ? '男' : '女'}</p>
+        <p><strong>健身目标:</strong> ${goalText[user.goal]}</p>
+        <p><strong>活动水平:</strong> ${activityText[user.activity]}</p>
+      `;
+    }
+
+    // 创建新用户
+    async function createNewUser() {
+      if (!appData.firebaseUser) {
+        alert('请先登录!');
+        return;
+      }
+
+      const username = document.getElementById('new-username').value.trim();
+      const height = parseInt(document.getElementById('new-height').value);
+      const weight = parseInt(document.getElementById('new-weight').value);
+      const age = parseInt(document.getElementById('new-age').value);
+      const gender = document.getElementById('new-gender').value;
+      const goal = document.getElementById('new-goal').value;
+      const activity = document.getElementById('new-activity').value;
+
+      if (!username || isNaN(height) || isNaN(weight) || isNaN(age)) {
+        alert('请填写所有必填字段！');
+        return;
+      }
+
+      // 检查用户名是否已存在
+      if (appData.users.some(user => user.username === username)) {
+        alert('该用户名已存在，请使用其他用户名！');
+        return;
+      }
+
+      // 新用户数据
+      const newUser = {
+        username,
+        height,
+        weight,
+        age,
+        gender,
+        goal,
+        activity,
+        createdAt: new Date().toISOString()
+      };
+
+      try {
+        // 保存到Firestore
+        const savedUser = await saveUserToFirestore(newUser);
+        
+        // 更新本地数据
+        appData.users.push(savedUser);
+        
+        // 选择新创建的用户
+        populateUserSelect();
+        document.getElementById('user-select').value = savedUser.id;
+        appData.currentUser = savedUser;
+        appData.authenticated = true;
+        
+        loadUserData(savedUser);
+        showElement('main-content');
+        hideModal('new-user-modal');
+        
+        // 重置表单
+        document.getElementById('new-username').value = '';
+        document.getElementById('new-password').value = '';
+        document.getElementById('new-height').value = '';
+        document.getElementById('new-weight').value = '';
+        document.getElementById('new-age').value = '';
+        document.getElementById('new-gender').value = 'male';
+        document.getElementById('new-goal').value = 'bulking';
+        document.getElementById('new-activity').value = 'moderate';
+      } catch (error) {
+        console.error('创建用户出错:', error);
+        alert('创建用户时发生错误，请重试!');
+      }
+    }
+
+    // 显示编辑个人信息模态框
+    function showEditProfileModal() {
+      if (!appData.currentUser || !appData.authenticated) return;
+
+      const user = appData.currentUser;
+      
+      document.getElementById('edit-username').value = user.username;
+      document.getElementById('edit-password').value = '';
+      document.getElementById('edit-height').value = user.height;
+      document.getElementById('edit-weight').value = user.weight;
+      document.getElementById('edit-age').value = user.age;
+      document.getElementById('edit-gender').value = user.gender;
+      document.getElementById('edit-goal').value = user.goal;
+      document.getElementById('edit-activity').value = user.activity;
+
+      showModal('edit-profile-modal');
+    }
+
+    // 保存用户资料
+    async function saveUserProfile() {
+      if (!appData.currentUser || !appData.authenticated) return;
+
+      const userId = appData.currentUser.id;
+      const userIndex = appData.users.findIndex(user => user.id === userId);
+      
+      if (userIndex === -1) return;
+
+      const height = parseInt(document.getElementById('edit-height').value);
+      const weight = parseInt(document.getElementById('edit-weight').value);
+      const age = parseInt(document.getElementById('edit-age').value);
+      const gender = document.getElementById('edit-gender').value;
+      const goal = document.getElementById('edit-goal').value;
+      const activity = document.getElementById('edit-activity').value;
+
+      if (isNaN(height) || isNaN(weight) || isNaN(age)) {
+        alert('请填写所有必填字段！');
+        return;
+      }
+
+      // 更新用户资料
+      const updatedUser = { ...appData.users[userIndex] };
+      
+      updatedUser.height = height;
+      updatedUser.weight = weight;
+      updatedUser.age = age;
+      updatedUser.gender = gender;
+      updatedUser.goal = goal;
+      updatedUser.activity = activity;
+      updatedUser.updatedAt = new Date().toISOString();
+
+      try {
+        // 保存到Firestore
+        await saveUserToFirestore(updatedUser);
+        
+        // 更新本地数据
+        appData.users[userIndex] = updatedUser;
+        appData.currentUser = updatedUser;
+        
+        loadUserData(updatedUser);
+        hideModal('edit-profile-modal');
+      } catch (error) {
+        console.error('更新用户资料出错:', error);
+        alert('更新资料时发生错误，请重试!');
+      }
+    }
+
+    // 加载食物列表
+    function loadFoodList() {
+      if (!appData.currentUser || !appData.authenticated) return;
+
+      const foodListElement = document.getElementById('food-list');
+      const dateKey = appData.currentDate;
+      
+      // 获取当天的食物记录
+      const todayFoods = appData.dietHistory[dateKey]?.foods || [];
+      
+      if (todayFoods.length === 0) {
+        foodListElement.innerHTML = '<p>今天还没有记录食物。</p>';
+        return;
+      }
+
+      let foodListHTML = '';
+      
+      todayFoods.forEach((food, index) => {
+        foodListHTML += `
+          <div class="food-item" data-index="${index}">
+            <div class="food-info">
+              <strong>${food.name}</strong> - ${food.amount}
+            </div>
+            <div class="food-actions">
+              <button class="btn edit-food" data-index="${index}">编辑</button>
+              <button class="btn btn-danger delete-food" data-index="${index}">删除</button>
+            </div>
+          </div>
+        `;
+      });
+
+      foodListElement.innerHTML = foodListHTML;
+
+      // 添加编辑和删除事件
+      document.querySelectorAll('.edit-food').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const index = parseInt(e.target.getAttribute('data-index'));
+          editFoodItem(index);
+        });
+      });
+
+      document.querySelectorAll('.delete-food').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const index = parseInt(e.target.getAttribute('data-index'));
+          deleteFoodItem(index);
+        });
+      });
+    }
+
+    // 加载常用食物
+    function loadFrequentFoods() {
+      if (!appData.currentUser || !appData.authenticated) return;
+
+      const frequentFoodsElement = document.getElementById('frequent-foods');
+      
+      if (appData.frequentFoods.length === 0) {
+        frequentFoodsElement.innerHTML = '<p>还没有常用食物。</p>';
+        return;
+      }
+
+      let frequentFoodsHTML = '';
+      
+      appData.frequentFoods.forEach(food => {
+        frequentFoodsHTML += `
+          <div class="food-item">
+            <div class="food-info">
+              <strong>${food.name}</strong>
+            </div>
+            <div class="food-actions">
+              <button class="btn add-frequent-food" data-name="${food.name}">添加</button>
+            </div>
+          </div>
+        `;
+      });
+
+      frequentFoodsElement.innerHTML = frequentFoodsHTML;
+
+      // 添加快速添加事件
+      document.querySelectorAll('.add-frequent-food').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const foodName = e.target.getAttribute('data-name');
+          document.getElementById('food-name').value = foodName;
+          document.getElementById('food-amount').focus();
+        });
+      });
+    }
+
+    // 添加食物项
+    async function addFoodItem() {
+      if (!appData.currentUser || !appData.authenticated) return;
+
+      const foodName = document.getElementById('food-name').value.trim();
+      const foodAmount = document.getElementById('food-amount').value.trim();
+
+      if (!foodName || !foodAmount) {
+        alert('请输入食物名称和数量！');
+        return;
+      }
+
+      const dateKey = appData.currentDate;
+      const userId = appData.currentUser.id;
+      
+      // 初始化当天的记录（如果不存在）
+      if (!appData.dietHistory[dateKey]) {
+        appData.dietHistory[dateKey] = {
+          userId: userId,
+          date: dateKey,
+          foods: [],
+          analysis: null
+        };
+      }
+
+      // 添加食物到当天记录
+      const newFood = {
+        name: foodName,
+        amount: foodAmount,
+        addedAt: new Date().toISOString()
+      };
+      
+      appData.dietHistory[dateKey].foods.push(newFood);
+
+      // 保存到Firestore
+      try {
+        const updatedRecord = await saveDietRecordToFirestore(dateKey, appData.dietHistory[dateKey]);
+        appData.dietHistory[dateKey] = updatedRecord;
+        
+        // 检查是否已存在于常用食物中
+        const existsInFrequent = appData.frequentFoods.some(food => food.name.toLowerCase() === foodName.toLowerCase());
+        
+        if (!existsInFrequent) {
+          const newFrequentFood = {
+            name: foodName
+          };
+          
+          const savedFood = await saveFrequentFoodToFirestore(newFrequentFood);
+          appData.frequentFoods.push(savedFood);
+        }
+        
+        loadFoodList();
+        loadFrequentFoods();
+
+        // 清空输入框
+        document.getElementById('food-name').value = '';
+        document.getElementById('food-amount').value = '';
+        document.getElementById('food-name').focus();
+      } catch (error) {
+        console.error('添加食物出错:', error);
+        alert('添加食物时发生错误，请重试!');
+      }
+    }
+
+    // 编辑食物项
+    async function editFoodItem(index) {
+      if (!appData.currentUser || !appData.authenticated) return;
+
+      const dateKey = appData.currentDate;
+      const foods = appData.dietHistory[dateKey]?.foods || [];
+      
+      if (index < 0 || index >= foods.length) return;
+
+      const food = foods[index];
+      
+      // 使用简单的 prompt 来编辑
+      const newName = prompt('编辑食物名称:', food.name);
+      if (newName === null) return;
+      
+      const newAmount = prompt('编辑食物数量:', food.amount);
+      if (newAmount === null) return;
+
+      // 更新食物信息
+      foods[index] = {
+        ...food,
+        name: newName.trim() || food.name,
+        amount: newAmount.trim() || food.amount,
+        updatedAt: new Date().toISOString()
+      };
+
+      try {
+        // 保存到Firestore
+        await saveDietRecordToFirestore(dateKey, appData.dietHistory[dateKey]);
+        loadFoodList();
+      } catch (error) {
+        console.error('编辑食物出错:', error);
+        alert('编辑食物时发生错误，请重试!');
+      }
+    }
+
+    // 删除食物项
+    async function deleteFoodItem(index) {
+      if (!appData.currentUser || !appData.authenticated) return;
+
+      const dateKey = appData.currentDate;
+      const foods = appData.dietHistory[dateKey]?.foods || [];
+      
+      if (index < 0 || index >= foods.length) return;
+
+      if (confirm('确定要删除这个食物记录吗？')) {
+        foods.splice(index, 1);
+        
+        try {
+          // 保存到Firestore
+          await deleteFoodFromFirestore(dateKey, index);
+          
+          // 如果删除后数组为空，可能需要更新本地记录
+          if (foods.length === 0) {
+            appData.dietHistory[dateKey].foods = [];
+          }
+          
+          loadFoodList();
+        } catch (error) {
+          console.error('删除食物出错:', error);
+          alert('删除食物时发生错误，请重试!');
+        }
+      }
+    }
+
+    // 分析饮食
+    async function analyzeDiet() {
+      if (!appData.currentUser || !appData.authenticated) return;
+
+      const dateKey = appData.currentDate;
+      const dietRecord = appData.dietHistory[dateKey];
+      
+      if (!dietRecord || dietRecord.foods.length === 0) {
+        alert('请先添加今天摄入的食物！');
+        return;
+      }
+
+      // 显示加载状态
+      document.getElementById('loading').style.display = 'block';
+
+      // 准备发送给 DeepSeek API 的数据
+      const user = appData.currentUser;
+      const foods = dietRecord.foods;
+      
+      // 构建 prompt
+      const goalText = {
+        'bulking': '增肌',
+        'cutting': '减脂',
+        'maintain': '维持体重'
+      };
+
+      const activityText = {
+        'sedentary': '久坐少动',
+        'light': '轻度活动',
+        'moderate': '中度活动',
+        'active': '高度活动',
+        'very-active': '非常活跃'
+      };
+
+      const prompt = `
+我需要你分析一下我今天的饮食情况，并给出建议。请先返回一个简洁的表格，然后再给出详细分析。
+
+我的个人信息：
+- 身高: ${user.height}cm
+- 体重: ${user.weight}kg
+- 年龄: ${user.age}岁
+- 性别: ${user.gender === 'male' ? '男' : '女'}
+- 健身目标: ${goalText[user.goal]}
+- 活动水平: ${activityText[user.activity]}
+
+今天我吃了以下食物：
+${foods.map(food => `- ${food.name} ${food.amount}`).join('\n')}
+
+请按以下格式回复：
+
+1. 首先，提供一个简单的表格，清晰显示三大营养素的推荐摄入量、今日已摄入量和建议调整量：
+
+| 营养素 | 今日摄入 | 每日建议 | 今日建议 |
+|-------|---------|---------|---------|
+| 蛋白质 | XX g    | XX g    | +XX g或超标XX g |
+| 碳水化合物 | XX g | XX g   | +XX g或超标XX g |
+| 脂肪   | XX g    | XX g    | +XX g或超标XX g |
+
+2. 然后，给出推荐每日摄入量（请用具体数值，不要给范围）：
+- 卡路里：约XXXX大卡
+- 蛋白质：XXg（X-X.Xg/kg体重）
+- 碳水化合物：XXg（X-Xg/kg体重）
+- 脂肪：XXg（X.X-X.Xg/kg体重）
+
+3. 今日已摄入量估算：
+- 详细列出每种食物的大致热量和营养素含量
+- 提供总计数值
+
+4. 今日建议：
+- 针对三大营养素分别给出具体的增减建议（用+XXg或超标XXg的格式）
+
+5. 详细分析及建议：
+- 分析当前饮食是否平衡
+- 提供具体改进建议
+
+请确保表格格式清晰，并给出精确的数值分析。
+`;
+
+      try {
+        // 调用DeepSeek API
+        const response = await callDeepSeekAPI(prompt);
+        const analysisResult = response.text;
+        
+        // 提取营养素数据并生成表格
+        const nutritionData = extractNutritionData(analysisResult);
+        
+        // 保存分析结果
+        appData.dietHistory[dateKey].analysis = {
+          timestamp: new Date().toISOString(),
+          result: analysisResult,
+          macros: {
+            protein: nutritionData.todayProtein,
+            carbs: nutritionData.todayCarbs,
+            fat: nutritionData.todayFat
+          },
+          recommended: {
+            protein: nutritionData.recommendedProtein,
+            carbs: nutritionData.recommendedCarbs,
+            fat: nutritionData.recommendedFat
+          },
+          suggestions: {
+            protein: nutritionData.proteinSuggestion,
+            carbs: nutritionData.carbsSuggestion,
+            fat: nutritionData.fatSuggestion
+          }
+        };
+        
+        // 保存到Firestore
+        await saveDietRecordToFirestore(dateKey, appData.dietHistory[dateKey]);
+        
+        // 显示分析结果表格
+        displayAnalysisTable(nutritionData);
+        
+        // 显示详细分析结果
+        document.getElementById('analysis-result').textContent = analysisResult;
+        
+        // 切换到分析结果标签
+        switchTab('analysis');
+      } catch (error) {
+        console.error('分析出错:', error);
+        document.getElementById('loading').style.display = 'none';
+        alert('分析出错: ' + error.message);
+      }
+    }
+
+    // 从分析结果中提取营养数据
+    function extractNutritionData(analysisText) {
+      // 初始化提取的数据
+      const data = {
+        recommendedProtein: '未知',
+        recommendedCarbs: '未知',
+        recommendedFat: '未知',
+        todayProtein: '未知',
+        todayCarbs: '未知',
+        todayFat: '未知',
+        proteinSuggestion: '未知',
+        carbsSuggestion: '未知',
+        fatSuggestion: '未知'
+      };
+
+      // 尝试从表格中提取数据
+      const tableRegex = /\|\s*蛋白质\s*\|\s*(\d+\.?\d*)\s*g\s*\|\s*(\d+\.?\d*)\s*g\s*\|\s*(\+\d+\.?\d*\s*g|超标\d+\.?\d*\s*g)\s*\|/i;
+      const tableMatch = analysisText.match(tableRegex);
+      if (tableMatch) {
+        data.todayProtein = tableMatch[1] + 'g';
+        data.recommendedProtein = tableMatch[2] + 'g';
+        data.proteinSuggestion = tableMatch[3];
+      }
+
+      const carbsTableRegex = /\|\s*碳水化合物\s*\|\s*(\d+\.?\d*)\s*g\s*\|\s*(\d+\.?\d*)\s*g\s*\|\s*(\+\d+\.?\d*\s*g|超标\d+\.?\d*\s*g)\s*\|/i;
+      const carbsTableMatch = analysisText.match(carbsTableRegex);
+      if (carbsTableMatch) {
+        data.todayCarbs = carbsTableMatch[1] + 'g';
+        data.recommendedCarbs = carbsTableMatch[2] + 'g';
+        data.carbsSuggestion = carbsTableMatch[3];
+      }
+
+      const fatTableRegex = /\|\s*脂肪\s*\|\s*(\d+\.?\d*)\s*g\s*\|\s*(\d+\.?\d*)\s*g\s*\|\s*(\+\d+\.?\d*\s*g|超标\d+\.?\d*\s*g)\s*\|/i;
+      const fatTableMatch = analysisText.match(fatTableRegex);
+      if (fatTableMatch) {
+        data.todayFat = fatTableMatch[1] + 'g';
+        data.recommendedFat = fatTableMatch[2] + 'g';
+        data.fatSuggestion = fatTableMatch[3];
+      }
+
+      // 如果表格解析失败，尝试处理范围格式 (如 "120-150g")
+      if (data.recommendedProtein === '未知') {
+        const proteinRecommendMatch = analysisText.match(/蛋白质：\s*(\d+)-(\d+)g/i);
+        if (proteinRecommendMatch) {
+          const avg = Math.round((parseInt(proteinRecommendMatch[1]) + parseInt(proteinRecommendMatch[2])) / 2);
+          data.recommendedProtein = avg + 'g';
+        }
+      }
+
+      if (data.recommendedCarbs === '未知') {
+        const carbsRecommendMatch = analysisText.match(/碳水化合物：\s*(\d+)-(\d+)g/i);
+        if (carbsRecommendMatch) {
+          const avg = Math.round((parseInt(carbsRecommendMatch[1]) + parseInt(carbsRecommendMatch[2])) / 2);
+          data.recommendedCarbs = avg + 'g';
+        }
+      }
+
+      if (data.recommendedFat === '未知') {
+        const fatRecommendMatch = analysisText.match(/脂肪：\s*(\d+)-(\d+)g/i);
+        if (fatRecommendMatch) {
+          const avg = Math.round((parseInt(fatRecommendMatch[1]) + parseInt(fatRecommendMatch[2])) / 2);
+          data.recommendedFat = avg + 'g';
+        }
+      }
+
+      // 尝试提取当日总摄入量
+      if (data.todayProtein === '未知') {
+        const totalMatch = analysisText.match(/总计：[^，]*，\s*(\d+)g蛋白质，\s*(\d+)g碳水，\s*(\d+)g脂肪/i);
+        if (totalMatch) {
+          data.todayProtein = totalMatch[1] + 'g';
+          data.todayCarbs = totalMatch[2] + 'g';
+          data.todayFat = totalMatch[3] + 'g';
+        }
+      }
+
+      // 尝试提取今日建议 - 蛋白质
+      if (data.proteinSuggestion === '未知') {
+        const proteinSuggestionMatch = analysisText.match(/蛋白质：\s*\+(\d+)-(\d+)g/i);
+        if (proteinSuggestionMatch) {
+          const avg = Math.round((parseInt(proteinSuggestionMatch[1]) + parseInt(proteinSuggestionMatch[2])) / 2);
+          data.proteinSuggestion = '+' + avg + 'g';
+        }
+      }
+
+      // 尝试提取今日建议 - 碳水
+      if (data.carbsSuggestion === '未知') {
+        const carbsSuggestionMatch = analysisText.match(/碳水化合物：\s*\+(\d+)-(\d+)g/i);
+        if (carbsSuggestionMatch) {
+          const avg = Math.round((parseInt(carbsSuggestionMatch[1]) + parseInt(carbsSuggestionMatch[2])) / 2);
+          data.carbsSuggestion = '+' + avg + 'g';
+        }
+      }
+
+      // 尝试提取今日建议 - 脂肪
+      if (data.fatSuggestion === '未知') {
+        const fatSuggestionMatch = analysisText.match(/脂肪：\s*\+(\d+)-(\d+)g/i);
+        if (fatSuggestionMatch) {
+          const avg = Math.round((parseInt(fatSuggestionMatch[1]) + parseInt(fatSuggestionMatch[2])) / 2);
+          data.fatSuggestion = '+' + avg + 'g';
+        }
+      }
+
+      return data;
+    }
+
+    // 显示分析结果表格
+    function displayAnalysisTable(data) {
+      if (!appData.currentUser || !appData.authenticated) return;
+
+      const tableContainer = document.getElementById('analysis-table-container');
+      const summaryContainer = document.getElementById('analysis-summary');
+      
+      // 用户基本信息
+      const user = appData.currentUser;
+      const goalText = {
+        'bulking': '增肌',
+        'cutting': '减脂',
+        'maintain': '维持'
+      };
+
+      // 生成基本信息摘要
+      summaryContainer.innerHTML = `
+        <p>
+          <strong>日期:</strong> ${formatDate(appData.currentDate)} | 
+          <strong>用户:</strong> ${user.username} | 
+          <strong>身高/体重:</strong> ${user.height}cm/${user.weight}kg | 
+          <strong>目标:</strong> ${goalText[user.goal]}
+        </p>
+      `;
+      
+      // 安全检查函数 - 检查是否包含特定字符串
+      const safeIncludes = (str, searchValue) => {
+        return typeof str === 'string' && str.includes(searchValue);
+      };
+      
+      // 生成营养分析表格
+      let tableHTML = `
+        <table class="analysis-table">
+          <thead>
+            <tr>
+              <th>营养素</th>
+              <th>今日摄入</th>
+              <th>每日建议</th>
+              <th>今日建议</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="nutrient-row protein-row">
+              <td>蛋白质</td>
+              <td>${data.todayProtein || '未知'}</td>
+              <td>${data.recommendedProtein || '未知'}</td>
+              <td class="${safeIncludes(data.proteinSuggestion, '+') ? 'positive-suggestion' : 'negative-suggestion'}">${data.proteinSuggestion || '未知'}</td>
+            </tr>
+            <tr class="nutrient-row carbs-row">
+              <td>碳水化合物</td>
+              <td>${data.todayCarbs || '未知'}</td>
+              <td>${data.recommendedCarbs || '未知'}</td>
+              <td class="${safeIncludes(data.carbsSuggestion, '+') ? 'positive-suggestion' : 'negative-suggestion'}">${data.carbsSuggestion || '未知'}</td>
+            </tr>
+            <tr class="nutrient-row fat-row">
+              <td>脂肪</td>
+              <td>${data.todayFat || '未知'}</td>
+              <td>${data.recommendedFat || '未知'}</td>
+              <td class="${safeIncludes(data.fatSuggestion, '+') ? 'positive-suggestion' : 'negative-suggestion'}">${data.fatSuggestion || '未知'}</td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+      
+      tableContainer.innerHTML = tableHTML;
+      
+      // 隐藏加载指示器
+      document.getElementById('loading').style.display = 'none';
+    }
+
+    // 使用DeepSeek API调用
+    async function callDeepSeekAPI(prompt) {
+      // 显示加载状态
+      document.getElementById('loading').style.display = 'block';
+      
+      try {
+        // 这里您需要填写自己的DeepSeek API密钥
+        const apiKey = "sk-0410748f7ded4a1ab4013df1f6f0cb94";  // 请替换为您的API密钥
+        
+        // 创建一个新的fetch请求
+        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: "deepseek-chat", // 使用DeepSeek-V3模型
+            messages: [
+              {
+                role: "system",
+                content: "你是一位专业的健身和营养师，擅长分析饮食和提供营养建议。请根据用户提供的信息，分析其每日营养摄入情况并给出具体建议。请严格按照用户要求的格式回复。"
+              },
+              {
+                role: "user",
+                content: prompt
+              }
+            ],
+            temperature: 0.3 // DeepSeek API推荐的温度值
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API错误: ${response.status} ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        // 隐藏加载状态
+        document.getElementById('loading').style.display = 'none';
+        
+        // 返回分析结果
+        return {
+          text: result.choices[0].message.content
+        };
+      } catch (error) {
+        // 隐藏加载状态
+        document.getElementById('loading').style.display = 'none';
+        console.error("调用DeepSeek API出错:", error);
+        throw error;
+      }
+    }
+
+    // 加载指定日期的历史记录
+    function loadHistoryForDate() {
+      if (!appData.currentUser || !appData.authenticated) return;
+
+      const dateKey = document.getElementById('history-date').value;
+      const historyContentElement = document.getElementById('history-content');
+      
+      if (!dateKey) {
+        historyContentElement.innerHTML = '<p>请选择日期查看历史记录。</p>';
+        return;
+      }
+
+      const historyRecord = appData.dietHistory[dateKey];
+      
+      if (!historyRecord || historyRecord.userId !== appData.currentUser.id) {
+        historyContentElement.innerHTML = '<p>所选日期没有饮食记录。</p>';
+        return;
+      }
+
+      let historyHTML = `
+        <h4>食物记录 - ${formatDate(dateKey)}</h4>
+        <div class="food-list">
+      `;
+
+      if (historyRecord.foods.length === 0) {
+        historyHTML += '<p>该日没有记录食物。</p>';
+      } else {
+        historyRecord.foods.forEach(food => {
+          historyHTML += `
+            <div class="food-item">
+              <div class="food-info">
+                <strong>${food.name}</strong> - ${food.amount}
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      historyHTML += '</div>';
+
+      // 安全检查函数 - 检查是否包含特定字符串
+      const safeIncludes = (str, searchValue) => {
+        return typeof str === 'string' && str.includes(searchValue);
+      };
+
+      if (historyRecord.analysis) {
+        const macros = historyRecord.analysis.macros || {};
+        const recommended = historyRecord.analysis.recommended || {};
+        const suggestions = historyRecord.analysis.suggestions || {};
+        
+        historyHTML += `
+          <h4>营养分析</h4>
+          <table class="analysis-table">
+            <thead>
+              <tr>
+                <th>营养素</th>
+                <th>当日摄入</th>
+                <th>每日建议</th>
+                <th>当日建议</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="nutrient-row protein-row">
+                <td>蛋白质</td>
+                <td>${macros.protein || '未知'}</td>
+                <td>${recommended.protein || '未知'}</td>
+                <td class="${safeIncludes(suggestions.protein, '+') ? 'positive-suggestion' : 'negative-suggestion'}">${suggestions.protein || '未知'}</td>
+              </tr>
+              <tr class="nutrient-row carbs-row">
+                <td>碳水化合物</td>
+                <td>${macros.carbs || '未知'}</td>
+                <td>${recommended.carbs || '未知'}</td>
+                <td class="${safeIncludes(suggestions.carbs, '+') ? 'positive-suggestion' : 'negative-suggestion'}">${suggestions.carbs || '未知'}</td>
+              </tr>
+              <tr class="nutrient-row fat-row">
+                <td>脂肪</td>
+                <td>${macros.fat || '未知'}</td>
+                <td>${recommended.fat || '未知'}</td>
+                <td class="${safeIncludes(suggestions.fat, '+') ? 'positive-suggestion' : 'negative-suggestion'}">${suggestions.fat || '未知'}</td>
+              </tr>
+            </tbody>
+          </table>
+          <h4>详细分析</h4>
+          <div class="analysis-result">
+            ${historyRecord.analysis.result || '没有分析结果'}
+          </div>
+        `;
+      } else {
+        historyHTML += '<p>该日没有分析记录。</p>';
+      }
+
+      historyContentElement.innerHTML = historyHTML;
+    }
+
+    // 加载营养摄入统计
+    function loadStats(period) {
+      if (!appData.currentUser || !appData.authenticated) return;
+
+      let startDate, endDate;
+      const today = new Date();
+      
+      // 确定日期范围
+      if (period === 'week') {
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 7);
+        endDate = today;
+      } else if (period === 'month') {
+        startDate = new Date(today);
+        startDate.setMonth(today.getMonth() - 1);
+        endDate = today;
+      } else {
+        return; // 自定义范围会通过 applyCustomDateRange 处理
+      }
+
+      renderStatsChart(startDate, endDate);
+    }
+
+    // 应用自定义日期范围
+    function applyCustomDateRange() {
+      if (!appData.currentUser || !appData.authenticated) return;
+      
+      const startDate = new Date(document.getElementById('start-date').value);
+      const endDate = new Date(document.getElementById('end-date').value);
+      
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        alert('请选择有效的开始和结束日期！');
+        return;
+      }
+      
+      if (startDate > endDate) {
+        alert('开始日期不能晚于结束日期！');
+        return;
+      }
+      
+      renderStatsChart(startDate, endDate);
+    }
+
+    // 渲染统计图表
+    function renderStatsChart(startDate, endDate) {
+      if (!appData.currentUser || !appData.authenticated) return;
+
+      const userId = appData.currentUser.id;
+      const chartData = [];
+      const labels = [];
+      const proteinData = [];
+      const carbsData = [];
+      const fatData = [];
+
+      // 获取日期范围内的数据
+      let currentDate = new Date(startDate);
+      
+      while (currentDate <= endDate) {
+        const dateKey = currentDate.toISOString().split('T')[0];
+        const dietRecord = appData.dietHistory[dateKey];
+        
+        if (dietRecord && dietRecord.userId === userId && dietRecord.analysis) {
+          const macros = dietRecord.analysis.macros || {};
+          
+          labels.push(dateKey.slice(5)); // 月-日格式
+          
+          // 提取数值（去掉单位）
+          const proteinValue = macros.protein ? parseFloat(macros.protein.replace(/[^\d.]/g, '')) : 0;
+          const carbsValue = macros.carbs ? parseFloat(macros.carbs.replace(/[^\d.]/g, '')) : 0;
+          const fatValue = macros.fat ? parseFloat(macros.fat.replace(/[^\d.]/g, '')) : 0;
+          
+          proteinData.push(proteinValue);
+          carbsData.push(carbsValue);
+          fatData.push(fatValue);
+        }
+        
+        // 移动到下一天
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      // 如果没有数据
+      if (labels.length === 0) {
+        document.getElementById('macros-chart').style.display = 'none';
+        const statsTab = document.getElementById('stats-tab');
+        
+        if (!statsTab.querySelector('.no-data-message')) {
+          const noDataMsg = document.createElement('p');
+          noDataMsg.className = 'no-data-message';
+          noDataMsg.textContent = '所选时间范围内没有营养分析数据。';
+          statsTab.appendChild(noDataMsg);
+        }
+        
+        return;
+      }
+
+      // 删除可能存在的「无数据」消息
+      const noDataMsg = document.getElementById('stats-tab').querySelector('.no-data-message');
+      if (noDataMsg) {
+        noDataMsg.remove();
+      }
+
+      // 显示图表
+      document.getElementById('macros-chart').style.display = 'block';
+
+      // 绘制图表
+      const ctx = document.getElementById('macros-chart').getContext('2d');
+      
+      // 清除可能存在的旧图表
+      if (window.macrosChart) {
+        window.macrosChart.destroy();
+      }
+      
+      window.macrosChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: '蛋白质 (g)',
+              data: proteinData,
+              backgroundColor: 'rgba(255, 87, 34, 0.7)',
+              borderColor: 'rgba(255, 87, 34, 1)',
+              borderWidth: 1
+            },
+            {
+              label: '碳水化合物 (g)',
+              data: carbsData,
+              backgroundColor: 'rgba(33, 150, 243, 0.7)',
+              borderColor: 'rgba(33, 150, 243, 1)',
+              borderWidth: 1
+            },
+            {
+              label: '脂肪 (g)',
+              data: fatData,
+              backgroundColor: 'rgba(255, 193, 7, 0.7)',
+              borderColor: 'rgba(255, 193, 7, 1)',
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              stacked: false,
+              title: {
+                display: true,
+                text: '日期'
+              }
+            },
+            y: {
+              stacked: false,
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: '克 (g)'
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+            title: {
+              display: true,
+              text: '营养素摄入统计'
+            }
+          }
+        }
+      });
+    }
+
+    // 切换标签
+    function switchTab(tabId) {
+      // 更新标签状态
+      document.querySelectorAll('.tab').forEach(tab => {
+        if (tab.getAttribute('data-tab') === tabId) {
+          tab.classList.add('active');
+        } else {
+          tab.classList.remove('active');
+        }
+      });
+
+      // 更新内容可见性
+      document.querySelectorAll('.tab-content').forEach(content => {
+        if (content.id === `${tabId}-tab`) {
+          content.classList.add('active');
+        } else {
+          content.classList.remove('active');
+        }
+      });
+
+      // 特定标签的额外操作
+      if (tabId === 'history') {
+        // 默认显示今天的历史记录
+        document.getElementById('history-date').value = appData.currentDate;
+        loadHistoryForDate();
+      } else if (tabId === 'stats') {
+        // 默认加载一周的统计
+        document.getElementById('stats-period').value = 'week';
+        hideElement('custom-date-range');
+        loadStats('week');
+      }
+    }
+
+    // 初始化应用
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
