@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>健身饮食记录</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary-color: #4CAF50;
+      --secondary-color: #388E3C;
+      --background-color: #f5f5f5;
+      --card-background: #ffffff;
+      --text-color: #333333;
+      --border-color: #dddddd;
+      --protein-color: #FF5722;
+      --carb-color: #2196F3;
+      --fat-color: #FFC107;
+    }
+
+    body {
+      font-family: 'Microsoft YaHei', sans-serif;
+      line-height: 1.6;
+      color: var(--text-color);
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: var(--background-color);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    h1, h2, h3 {
+      margin-top: 0;
+    }
+
+    .back-link {
+      text-decoration: none;
+      color: var(--primary-color);
+      font-weight: bold;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    @media (min-width: 768px) {
+      .container {
+        grid-template-columns: 300px 1fr;
+      }
+    }
+
+    .card {
+      background-color: var(--card-background);
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 8px 16px;
+      background-color: var(--primary-color);
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background-color: var(--secondary-color);
+    }
+
+    .btn-secondary {
+      background-color: #9E9E9E;
+    }
+
+    .btn-secondary:hover {
+      background-color: #757575;
+    }
+
+    .btn-danger {
+      background-color: #F44336;
+    }
+
+    .btn-danger:hover {
+      background-color: #D32F2F;
+    }
+
+    .input-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 1rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      background-color: var(--background-color);
+    }
+
+    .food-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+    }
+
+    .food-info {
+      flex-grow: 1;
+    }
+
+    .food-actions {
+      display: flex;
+      gap: 5px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background-color: var(--card-background);
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 500px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      z-index: 900;
+    }
+
+    .macro-stats {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 20px;
+    }
+
+    .macro-stat {
+      text-align: center;
+      padding: 10px;
+      border-radius: 4px;
+    }
+
+    .protein {
+      background-color: rgba(255, 87, 34, 0.1);
+      color: var(--protein-color);
+    }
+
+    .carbs {
+      background-color: rgba(33, 150, 243, 0.1);
+      color: var(--carb-color);
+    }
+
+    .fat {
+      background-color: rgba(255, 193, 7, 0.1);
+      color: var(--fat-color);
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .analysis-result {
+      white-space: pre-line;
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 15px;
+    }
+
+    .tab {
+      padding: 10px 15px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+
+    .tab.active {
+      border-bottom: 2px solid var(--primary-color);
+      color: var(--primary-color);
+      font-weight: bold;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>健身饮食记录</h1>
+    <a href="index.html" class="back-link">< 返回主页</a>
+  </div>
+
+  <!-- 用户选择区域 -->
+  <div id="user-selection" class="card">
+    <h2>选择用户</h2>
+    <div class="input-group">
+      <label for="user-select">用户列表:</label>
+      <select id="user-select">
+        <option value="">-- 选择用户 --</option>
+      </select>
+    </div>
+    <button id="new-user-btn" class="btn">添加新用户</button>
+  </div>
+
+  <!-- 主要内容区域 -->
+  <div id="main-content" class="container hidden">
+    <div class="sidebar">
+      <div class="card">
+        <h3>用户信息</h3>
+        <div id="user-info"></div>
+        <button id="edit-profile-btn" class="btn">修改个人信息</button>
+      </div>
+
+      <div class="card">
+        <h3>添加食物</h3>
+        <div class="input-group">
+          <label for="food-name">食物名称:</label>
+          <input type="text" id="food-name" placeholder="例如: 鸡胸肉">
+        </div>
+        <div class="input-group">
+          <label for="food-amount">食物数量:</label>
+          <input type="text" id="food-amount" placeholder="例如: 100g 或 1把">
+        </div>
+        <button id="add-food-btn" class="btn">添加食物</button>
+      </div>
+
+      <div class="card">
+        <h3>快速添加</h3>
+        <div id="frequent-foods"></div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="card">
+        <div class="tabs">
+          <div class="tab active" data-tab="today">今日记录</div>
+          <div class="tab" data-tab="analysis">分析结果</div>
+          <div class="tab" data-tab="history">历史记录</div>
+          <div class="tab" data-tab="stats">数据统计</div>
+        </div>
+
+        <div id="today-tab" class="tab-content active">
+          <h3>今日食物记录 <span id="current-date"></span></h3>
+          <div id="food-list"></div>
+          <button id="analyze-btn" class="btn">分析营养摄入</button>
+          <div id="loading" class="loading">
+            <p>正在分析中，请稍候...</p>
+          </div>
+        </div>
+
+        <div id="analysis-tab" class="tab-content">
+          <h3>营养分析结果</h3>
+          <div id="today-macros" class="macro-stats">
+            <div class="macro-stat protein">
+              <h4>蛋白质</h4>
+              <p id="protein-value">0g</p>
+            </div>
+            <div class="macro-stat carbs">
+              <h4>碳水化合物</h4>
+              <p id="carbs-value">0g</p>
+            </div>
+            <div class="macro-stat fat">
+              <h4>脂肪</h4>
+              <p id="fat-value">0g</p>
+            </div>
+          </div>
+          <div id="analysis-result" class="analysis-result"></div>
+        </div>
+
+        <div id="history-tab" class="tab-content">
+          <h3>历史记录</h3>
+          <div class="input-group">
+            <label for="history-date">选择日期:</label>
+            <input type="date" id="history-date">
+          </div>
+          <div id="history-content"></div>
+        </div>
+
+        <div id="stats-tab" class="tab-content">
+          <h3>营养摄入统计</h3>
+          <div class="input-group">
+            <label for="stats-period">统计周期:</label>
+            <select id="stats-period">
+              <option value="week">最近一周</option>
+              <option value="month">最近一个月</option>
+              <option value="custom">自定义范围</option>
+            </select>
+          </div>
+          <div id="custom-date-range" class="hidden">
+            <div class="input-group">
+              <label for="start-date">开始日期:</label>
+              <input type="date" id="start-date">
+            </div>
+            <div class="input-group">
+              <label for="end-date">结束日期:</label>
+              <input type="date" id="end-date">
+            </div>
+            <button id="apply-custom-range" class="btn">应用</button>
+          </div>
+          <canvas id="macros-chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新用户 Modal -->
+  <div id="new-user-modal" class="modal">
+    <div class="modal-content">
+      <h2>创建新用户</h2>
+      <div class="input-group">
+        <label for="new-username">用户名:</label>
+        <input type="text" id="new-username" required>
+      </div>
+      <div class="input-group">
+        <label for="new-password">密码 (可选):</label>
+        <input type="password" id="new-password">
+      </div>
+      <div class="input-group">
+        <label for="new-height">身高 (cm):</label>
+        <input type="number" id="new-height" min="100" max="250" required>
+      </div>
+      <div class="input-group">
+        <label for="new-weight">体重 (kg):</label>
+        <input type="number" id="new-weight" min="30" max="200" required>
+      </div>
+      <div class="input-group">
+        <label for="new-age">年龄:</label>
+        <input type="number" id="new-age" min="12" max="100" required>
+      </div>
+      <div class="input-group">
+        <label for="new-gender">性别:</label>
+        <select id="new-gender" required>
+          <option value="male">男</option>
+          <option value="female">女</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="new-goal">健身目标:</label>
+        <select id="new-goal" required>
+          <option value="bulking">增肌</option>
+          <option value="cutting">减脂</option>
+          <option value="maintain">维持</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="new-activity">活动水平:</label>
+        <select id="new-activity" required>
+          <option value="sedentary">久坐少动</option>
+          <option value="light">轻度活动</option>
+          <option value="moderate">中度活动</option>
+          <option value="active">高度活动</option>
+          <option value="very-active">非常活跃</option>
+        </select>
+      </div>
+      <button id="create-user-btn" class="btn">创建用户</button>
+      <button id="cancel-new-user-btn" class="btn btn-secondary">取消</button>
+    </div>
+  </div>
+
+  <!-- 编辑个人信息 Modal -->
+  <div id="edit-profile-modal" class="modal">
+    <div class="modal-content">
+      <h2>编辑个人信息</h2>
+      <div class="input-group">
+        <label for="edit-username">用户名:</label>
+        <input type="text" id="edit-username" disabled>
+      </div>
+      <div class="input-group">
+        <label for="edit-password">更改密码 (可选):</label>
+        <input type="password" id="edit-password" placeholder="留空则保持不变">
+      </div>
+      <div class="input-group">
+        <label for="edit-height">身高 (cm):</label>
+        <input type="number" id="edit-height" min="100" max="250" required>
+      </div>
+      <div class="input-group">
+        <label for="edit-weight">体重 (kg):</label>
+        <input type="number" id="edit-weight" min="30" max="200" required>
+      </div>
+      <div class="input-group">
+        <label for="edit-age">年龄:</label>
+        <input type="number" id="edit-age" min="12" max="100" required>
+      </div>
+      <div class="input-group">
+        <label for="edit-gender">性别:</label>
+        <select id="edit-gender" required>
+          <option value="male">男</option>
+          <option value="female">女</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="edit-goal">健身目标:</label>
+        <select id="edit-goal" required>
+          <option value="bulking">增肌</option>
+          <option value="cutting">减脂</option>
+          <option value="maintain">维持</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="edit-activity">活动水平:</label>
+        <select id="edit-activity" required>
+          <option value="sedentary">久坐少动</option>
+          <option value="light">轻度活动</option>
+          <option value="moderate">中度活动</option>
+          <option value="active">高度活动</option>
+          <option value="very-active">非常活跃</option>
+        </select>
+      </div>
+      <button id="save-profile-btn" class="btn">保存修改</button>
+      <button id="cancel-edit-profile-btn" class="btn btn-secondary">取消</button>
+    </div>
+  </div>
+
+  <div id="overlay" class="overlay"></div>
+
+  <script>
+    // 全局数据
+    const appData = {
+      users: [],
+      currentUser: null,
+      currentDate: new Date().toISOString().split('T')[0],
+      frequentFoods: [],
+      dietHistory: {}
+    };
+
+    // 通用工具函数
+    function generateId() {
+      return Math.random().toString(36).substr(2, 9);
+    }
+
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+    }
+
+    function showModal(modalId) {
+      document.getElementById(modalId).style.display = 'flex';
+      document.getElementById('overlay').style.display = 'block';
+    }
+
+    function hideModal(modalId) {
+      document.getElementById(modalId).style.display = 'none';
+      document.getElementById('overlay').style.display = 'none';
+    }
+
+    function showElement(elementId) {
+      document.getElementById(elementId).classList.remove('hidden');
+    }
+
+    function hideElement(elementId) {
+      document.getElementById(elementId).classList.add('hidden');
+    }
+
+    // 初始化应用
+    function initApp() {
+      loadDataFromStorage();
+      setupEventListeners();
+      populateUserSelect();
+      document.getElementById('current-date').textContent = formatDate(appData.currentDate);
+    }
+
+    // 从本地存储加载数据
+    function loadDataFromStorage() {
+      const storedUsers = localStorage.getItem('fitness-diet-users');
+      const storedFrequentFoods = localStorage.getItem('fitness-diet-frequent-foods');
+      const storedDietHistory = localStorage.getItem('fitness-diet-history');
+
+      if (storedUsers) {
+        appData.users = JSON.parse(storedUsers);
+      }
+
+      if (storedFrequentFoods) {
+        appData.frequentFoods = JSON.parse(storedFrequentFoods);
+      }
+
+      if (storedDietHistory) {
+        appData.dietHistory = JSON.parse(storedDietHistory);
+      }
+    }
+
+    // 保存数据到本地存储
+    function saveDataToStorage() {
+      localStorage.setItem('fitness-diet-users', JSON.stringify(appData.users));
+      localStorage.setItem('fitness-diet-frequent-foods', JSON.stringify(appData.frequentFoods));
+      localStorage.setItem('fitness-diet-history', JSON.stringify(appData.dietHistory));
+    }
+
+    // 设置事件监听器
+    function setupEventListeners() {
+      // 用户选择事件
+      document.getElementById('user-select').addEventListener('change', onUserSelect);
+      document.getElementById('new-user-btn').addEventListener('click', () => showModal('new-user-modal'));
+      document.getElementById('create-user-btn').addEventListener('click', createNewUser);
+      document.getElementById('cancel-new-user-btn').addEventListener('click', () => hideModal('new-user-modal'));
+
+      // 用户资料编辑事件
+      document.getElementById('edit-profile-btn').addEventListener('click', () => showEditProfileModal());
+      document.getElementById('save-profile-btn').addEventListener('click', saveUserProfile);
+      document.getElementById('cancel-edit-profile-btn').addEventListener('click', () => hideModal('edit-profile-modal'));
+
+      // 食物记录事件
+      document.getElementById('add-food-btn').addEventListener('click', addFoodItem);
+      document.getElementById('analyze-btn').addEventListener('click', analyzeDiet);
+
+      // 历史记录事件
+      document.getElementById('history-date').addEventListener('change', loadHistoryForDate);
+
+      // 统计周期选择事件
+      document.getElementById('stats-period').addEventListener('change', function() {
+        if (this.value === 'custom') {
+          showElement('custom-date-range');
+        } else {
+          hideElement('custom-date-range');
+          loadStats(this.value);
+        }
+      });
+      document.getElementById('apply-custom-range').addEventListener('click', applyCustomDateRange);
+
+      // 标签切换事件
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+          const tabId = this.getAttribute('data-tab');
+          switchTab(tabId);
+        });
+      });
+    }
+
+    // 填充用户选择下拉框
+    function populateUserSelect() {
+      const userSelect = document.getElementById('user-select');
+      
+      // 清空现有选项
+      while (userSelect.options.length > 1) {
+        userSelect.remove(1);
+      }
+
+      // 添加用户选项
+      appData.users.forEach(user => {
+        const option = document.createElement('option');
+        option.value = user.id;
+        option.textContent = user.username;
+        userSelect.appendChild(option);
+      });
+    }
+
+    // 用户选择变更处理
+    function onUserSelect(e) {
+      const userId = e.target.value;
+      
+      if (!userId) {
+        hideElement('main-content');
+        return;
+      }
+
+      const selectedUser = appData.users.find(user => user.id === userId);
+      
+      if (selectedUser) {
+        appData.currentUser = selectedUser;
+        loadUserData(selectedUser);
+        showElement('main-content');
+        loadFoodList();
+        loadFrequentFoods();
+        switchTab('today');
+      }
+    }
+
+    // 加载用户数据
+    function loadUserData(user) {
+      const userInfoElement = document.getElementById('user-info');
+      
+      const goalText = {
+        'bulking': '增肌',
+        'cutting': '减脂',
+        'maintain': '维持'
+      };
+
+      const activityText = {
+        'sedentary': '久坐少动',
+        'light': '轻度活动',
+        'moderate': '中度活动',
+        'active': '高度活动',
+        'very-active': '非常活跃'
+      };
+
+      userInfoElement.innerHTML = `
+        <p><strong>用户名:</strong> ${user.username}</p>
+        <p><strong>身高:</strong> ${user.height} cm</p>
+        <p><strong>体重:</strong> ${user.weight} kg</p>
+        <p><strong>年龄:</strong> ${user.age}</p>
+        <p><strong>性别:</strong> ${user.gender === 'male' ? '男' : '女'}</p>
+        <p><strong>健身目标:</strong> ${goalText[user.goal]}</p>
+        <p><strong>活动水平:</strong> ${activityText[user.activity]}</p>
+      `;
+    }
+
+    // 创建新用户
+    function createNewUser() {
+      const username = document.getElementById('new-username').value.trim();
+      const password = document.getElementById('new-password').value.trim();
+      const height = parseInt(document.getElementById('new-height').value);
+      const weight = parseInt(document.getElementById('new-weight').value);
+      const age = parseInt(document.getElementById('new-age').value);
+      const gender = document.getElementById('new-gender').value;
+      const goal = document.getElementById('new-goal').value;
+      const activity = document.getElementById('new-activity').value;
+
+      if (!username || isNaN(height) || isNaN(weight) || isNaN(age)) {
+        alert('请填写所有必填字段！');
+        return;
+      }
+
+      // 检查用户名是否已存在
+      if (appData.users.some(user => user.username === username)) {
+        alert('该用户名已存在，请使用其他用户名！');
+        return;
+      }
+
+      const newUser = {
+        id: generateId(),
+        username,
+        password,
+        height,
+        weight,
+        age,
+        gender,
+        goal,
+        activity,
+        createdAt: new Date().toISOString()
+      };
+
+      appData.users.push(newUser);
+      saveDataToStorage();
+      populateUserSelect();
+
+      // 选择新创建的用户
+      document.getElementById('user-select').value = newUser.id;
+      appData.currentUser = newUser;
+      loadUserData(newUser);
+      showElement('main-content');
+      
+      hideModal('new-user-modal');
+      
+      // 重置表单
+      document.getElementById('new-username').value = '';
+      document.getElementById('new-password').value = '';
+      document.getElementById('new-height').value = '';
+      document.getElementById('new-weight').value = '';
+      document.getElementById('new-age').value = '';
+      document.getElementById('new-gender').value = 'male';
+      document.getElementById('new-goal').value = 'bulking';
+      document.getElementById('new-activity').value = 'moderate';
+    }
+
+    // 显示编辑个人信息模态框
+    function showEditProfileModal() {
+      if (!appData.currentUser) return;
+
+      const user = appData.currentUser;
+      
+      document.getElementById('edit-username').value = user.username;
+      document.getElementById('edit-password').value = '';
+      document.getElementById('edit-height').value = user.height;
+      document.getElementById('edit-weight').value = user.weight;
+      document.getElementById('edit-age').value = user.age;
+      document.getElementById('edit-gender').value = user.gender;
+      document.getElementById('edit-goal').value = user.goal;
+      document.getElementById('edit-activity').value = user.activity;
+
+      showModal('edit-profile-modal');
+    }
+
+    // 保存用户资料
+    function saveUserProfile() {
+      if (!appData.currentUser) return;
+
+      const userId = appData.currentUser.id;
+      const userIndex = appData.users.findIndex(user => user.id === userId);
+      
+      if (userIndex === -1) return;
+
+      const password = document.getElementById('edit-password').value.trim();
+      const height = parseInt(document.getElementById('edit-height').value);
+      const weight = parseInt(document.getElementById('edit-weight').value);
+      const age = parseInt(document.getElementById('edit-age').value);
+      const gender = document.getElementById('edit-gender').value;
+      const goal = document.getElementById('edit-goal').value;
+      const activity = document.getElementById('edit-activity').value;
+
+      if (isNaN(height) || isNaN(weight) || isNaN(age)) {
+        alert('请填写所有必填字段！');
+        return;
+      }
+
+      // 更新用户资料
+      const updatedUser = { ...appData.users[userIndex] };
+      
+      if (password) {
+        updatedUser.password = password;
+      }
+      
+      updatedUser.height = height;
+      updatedUser.weight = weight;
+      updatedUser.age = age;
+      updatedUser.gender = gender;
+      updatedUser.goal = goal;
+      updatedUser.activity = activity;
+      updatedUser.updatedAt = new Date().toISOString();
+
+      appData.users[userIndex] = updatedUser;
+      appData.currentUser = updatedUser;
+      
+      saveDataToStorage();
+      loadUserData(updatedUser);
+      hideModal('edit-profile-modal');
+    }
+
+    // 加载食物列表
+    function loadFoodList() {
+      if (!appData.currentUser) return;
+
+      const foodListElement = document.getElementById('food-list');
+      const dateKey = appData.currentDate;
+      
+      // 获取当天的食物记录
+      const todayFoods = appData.dietHistory[dateKey]?.foods || [];
+      
+      if (todayFoods.length === 0) {
+        foodListElement.innerHTML = '<p>今天还没有记录食物。</p>';
+        return;
+      }
+
+      let foodListHTML = '';
+      
+      todayFoods.forEach((food, index) => {
+        foodListHTML += `
+          <div class="food-item" data-index="${index}">
+            <div class="food-info">
+              <strong>${food.name}</strong> - ${food.amount}
+            </div>
+            <div class="food-actions">
+              <button class="btn edit-food" data-index="${index}">编辑</button>
+              <button class="btn btn-danger delete-food" data-index="${index}">删除</button>
+            </div>
+          </div>
+        `;
+      });
+
+      foodListElement.innerHTML = foodListHTML;
+
+      // 添加编辑和删除事件
+      document.querySelectorAll('.edit-food').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const index = parseInt(e.target.getAttribute('data-index'));
+          editFoodItem(index);
+        });
+      });
+
+      document.querySelectorAll('.delete-food').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const index = parseInt(e.target.getAttribute('data-index'));
+          deleteFoodItem(index);
+        });
+      });
+    }
+
+    // 加载常用食物
+    function loadFrequentFoods() {
+      if (!appData.currentUser) return;
+
+      const frequentFoodsElement = document.getElementById('frequent-foods');
+      
+      if (appData.frequentFoods.length === 0) {
+        frequentFoodsElement.innerHTML = '<p>还没有常用食物。</p>';
+        return;
+      }
+
+      let frequentFoodsHTML = '';
+      
+      appData.frequentFoods.forEach(food => {
+        frequentFoodsHTML += `
+          <div class="food-item">
+            <div class="food-info">
+              <strong>${food.name}</strong>
+            </div>
+            <div class="food-actions">
+              <button class="btn add-frequent-food" data-name="${food.name}">添加</button>
+            </div>
+          </div>
+        `;
+      });
+
+      frequentFoodsElement.innerHTML = frequentFoodsHTML;
+
+      // 添加快速添加事件
+      document.querySelectorAll('.add-frequent-food').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const foodName = e.target.getAttribute('data-name');
+          document.getElementById('food-name').value = foodName;
+          document.getElementById('food-amount').focus();
+        });
+      });
+    }
+
+    // 添加食物项
+    function addFoodItem() {
+      if (!appData.currentUser) return;
+
+      const foodName = document.getElementById('food-name').value.trim();
+      const foodAmount = document.getElementById('food-amount').value.trim();
+
+      if (!foodName || !foodAmount) {
+        alert('请输入食物名称和数量！');
+        return;
+      }
+
+      const dateKey = appData.currentDate;
+      
+      // 初始化当天的记录（如果不存在）
+      if (!appData.dietHistory[dateKey]) {
+        appData.dietHistory[dateKey] = {
+          userId: appData.currentUser.id,
+          date: dateKey,
+          foods: [],
+          analysis: null
+        };
+      }
+
+      // 添加食物到当天记录
+      appData.dietHistory[dateKey].foods.push({
+        id: generateId(),
+        name: foodName,
+        amount: foodAmount,
+        addedAt: new Date().toISOString()
+      });
+
+      // 检查是否已存在于常用食物中
+      const existsInFrequent = appData.frequentFoods.some(food => food.name.toLowerCase() === foodName.toLowerCase());
+      
+      if (!existsInFrequent) {
+        appData.frequentFoods.push({
+          id: generateId(),
+          name: foodName
+        });
+      }
+
+      saveDataToStorage();
+      loadFoodList();
+      loadFrequentFoods();
+
+      // 清空输入框
+      document.getElementById('food-name').value = '';
+      document.getElementById('food-amount').value = '';
+      document.getElementById('food-name').focus();
+    }
+
+    // 编辑食物项
+    function editFoodItem(index) {
+      if (!appData.currentUser) return;
+
+      const dateKey = appData.currentDate;
+      const foods = appData.dietHistory[dateKey]?.foods || [];
+      
+      if (index < 0 || index >= foods.length) return;
+
+      const food = foods[index];
+      
+      // 使用简单的 prompt 来编辑
+      const newName = prompt('编辑食物名称:', food.name);
+      if (newName === null) return;
+      
+      const newAmount = prompt('编辑食物数量:', food.amount);
+      if (newAmount === null) return;
+
+      // 更新食物信息
+      foods[index] = {
+        ...food,
+        name: newName.trim() || food.name,
+        amount: newAmount.trim() || food.amount,
+        updatedAt: new Date().toISOString()
+      };
+
+      saveDataToStorage();
+      loadFoodList();
+    }
+
+    // 删除食物项
+    function deleteFoodItem(index) {
+      if (!appData.currentUser) return;
+
+      const dateKey = appData.currentDate;
+      const foods = appData.dietHistory[dateKey]?.foods || [];
+      
+      if (index < 0 || index >= foods.length) return;
+
+      if (confirm('确定要删除这个食物记录吗？')) {
+        foods.splice(index, 1);
+        saveDataToStorage();
+        loadFoodList();
+      }
+    }
+
+    // 分析饮食
+    function analyzeDiet() {
+      if (!appData.currentUser) return;
+
+      const dateKey = appData.currentDate;
+      const dietRecord = appData.dietHistory[dateKey];
+      
+      if (!dietRecord || dietRecord.foods.length === 0) {
+        alert('请先添加今天摄入的食物！');
+        return;
+      }
+
+      // 显示加载状态
+      document.getElementById('loading').style.display = 'block';
+
+      // 准备发送给 DeepSeek API 的数据
+      const user = appData.currentUser;
+      const foods = dietRecord.foods;
+      
+      // 构建 prompt
+      const goalText = {
+        'bulking': '增肌',
+        'cutting': '减脂',
+        'maintain': '维持体重'
+      };
+
+      const activityText = {
+        'sedentary': '久坐少动',
+        'light': '轻度活动',
+        'moderate': '中度活动',
+        'active': '高度活动',
+        'very-active': '非常活跃'
+      };
+
+      const prompt = `
+我需要你分析一下我今天的饮食情况，并给出建议。
+
+我的个人信息：
+- 身高: ${user.height}cm
+- 体重: ${user.weight}kg
+- 年龄: ${user.age}岁
+- 性别: ${user.gender === 'male' ? '男' : '女'}
+- 健身目标: ${goalText[user.goal]}
+- 活动水平: ${activityText[user.activity]}
+
+今天我吃了以下食物：
+${foods.map(food => `- ${food.name} ${food.amount}`).join('\n')}
+
+请帮我分析：
+1. 根据我的基本情况，计算我每天大致需要摄入多少卡路里、蛋白质、碳水化合物和脂肪。
+2. 评估我今天摄入的食物中大致包含多少卡路里、蛋白质、碳水化合物和脂肪。
+3. 分析我今天的三大营养素是否平衡，是否符合我的健身目标。
+4. 给出具体的改进建议，比如可以增加或减少哪些食物。
+
+请给出清晰、具体的回答，并尽量给出精确的数值。
+`;
+
+      // 模拟调用 DeepSeek API（实际项目中需要替换为真实的 API 调用）
+      simulateDeepSeekAPI(prompt)
+        .then(response => {
+          // 隐藏加载状态
+          document.getElementById('loading').style.display = 'none';
+          
+          // 更新分析结果
+          const analysisResult = response.text;
+          
+          appData.dietHistory[dateKey].analysis = {
+            timestamp: new Date().toISOString(),
+            result: analysisResult,
+            // 这里可以添加解析出的蛋白质、碳水和脂肪的数值
+            macros: extractMacrosFromAnalysis(analysisResult)
+          };
+          
+          saveDataToStorage();
+          
+          // 显示分析结果
+          document.getElementById('analysis-result').textContent = analysisResult;
+          
+          // 更新宏量素数值
+          const macros = appData.dietHistory[dateKey].analysis.macros;
+          document.getElementById('protein-value').textContent = macros.protein || '未知';
+          document.getElementById('carbs-value').textContent = macros.carbs || '未知';
+          document.getElementById('fat-value').textContent = macros.fat || '未知';
+          
+          // 切换到分析结果标签
+          switchTab('analysis');
+        })
+        .catch(error => {
+          document.getElementById('loading').style.display = 'none';
+          alert('分析出错: ' + error.message);
+        });
+    }
+
+    // 从分析结果中提取三大宏量素数值
+    function extractMacrosFromAnalysis(analysisText) {
+      // 这个函数尝试从 AI 返回的文本中提取宏量素数值
+      // 实际项目中可能需要更复杂的解析逻辑
+
+      const macros = {
+        protein: '未知',
+        carbs: '未知',
+        fat: '未知'
+      };
+
+      // 简单的正则匹配示例
+      const proteinMatch = analysisText.match(/蛋白质[：:]\s*(\d+\.?\d*)\s*[克g]/i);
+      const carbsMatch = analysisText.match(/碳水化合物[：:]\s*(\d+\.?\d*)\s*[克g]/i);
+      const fatMatch = analysisText.match(/脂肪[：:]\s*(\d+\.?\d*)\s*[克g]/i);
+
+      if (proteinMatch) macros.protein = proteinMatch[1] + 'g';
+      if (carbsMatch) macros.carbs = carbsMatch[1] + 'g';
+      if (fatMatch) macros.fat = fatMatch[1] + 'g';
+
+      return macros;
+    }
+
+    // 模拟 DeepSeek API 调用（实际项目中需要替换为真实的 API 调用）
+    function simulateDeepSeekAPI(prompt) {
+      return new Promise((resolve, reject) => {
+        // 模拟 API 延迟
+        setTimeout(() => {
+          // 模拟分析结果
+          const result = {
+            text: `
+根据你提供的信息，我来分析一下你今天的饮食情况：
+
+1. 每日营养需求：
+
+基于你的身高、体重、年龄、性别和活动水平，你的大致每日营养需求如下：
+- 热量：约2100-2300卡路里
+- 蛋白质：135-150g（每公斤体重1.8-2.0g，适合增肌目标）
+- 碳水化合物：210-250g（占总热量的40-45%）
+- 脂肪：60-70g（占总热量的25-30%）
+
+2. 今日摄入估计：
+
+根据你列出的食物，估计你今日摄入：
+- 蛋白质：约110g
+- 碳水化合物：约180g
+- 脂肪：约55g
+- 总热量：约1650卡路里
+
+3. 营养素平衡分析：
+
+- 蛋白质：略低于你的增肌目标需要量（还差约25-40g）
+- 碳水化合物：低于理想水平（还差约30-70g）
+- 脂肪：接近理想水平，但略低（还差约5-15g）
+- 总热量：比你的需求少了约450-650卡路里
+
+4. 改进建议：
+
+为了更好地支持你的增肌目标，建议：
+
+1) 增加蛋白质摄入：
+   - 可以添加一份蛋白质奶昔（25-30g蛋白质）
+   - 增加一个鸡蛋（约6g蛋白质）
+   - 或再加100g的鸡胸肉（约25g蛋白质）
+
+2) 适当增加碳水化合物：
+   - 添加一份中等大小的红薯（约30g碳水）
+   - 或增加半碗米饭（约25g碳水）
+   - 适量全谷物面包（2片约30g碳水）
+
+3) 适当补充健康脂肪：
+   - 可以增加少量坚果（如10-15粒杏仁，提供约7-8g健康脂肪）
+   - 或者半个牛油果（约10g健康脂肪）
+
+总体来说，你的饮食构成比例接近合理，但总量不足以支持增肌目标。建议在保持当前饮食质量的基础上，适当增加总体食物摄入量，尤其是优质蛋白质和复合碳水化合物的来源。
+            `
+          };
+          resolve(result);
+        }, 2000);
+      });
+    }
+
+    // 加载指定日期的历史记录
+    function loadHistoryForDate() {
+      if (!appData.currentUser) return;
+
+      const dateKey = document.getElementById('history-date').value;
+      const historyContentElement = document.getElementById('history-content');
+      
+      if (!dateKey) {
+        historyContentElement.innerHTML = '<p>请选择日期查看历史记录。</p>';
+        return;
+      }
+
+      const historyRecord = appData.dietHistory[dateKey];
+      
+      if (!historyRecord || historyRecord.userId !== appData.currentUser.id) {
+        historyContentElement.innerHTML = '<p>所选日期没有饮食记录。</p>';
+        return;
+      }
+
+      let historyHTML = `
+        <h4>食物记录 - ${formatDate(dateKey)}</h4>
+        <div class="food-list">
+      `;
+
+      if (historyRecord.foods.length === 0) {
+        historyHTML += '<p>该日没有记录食物。</p>';
+      } else {
+        historyRecord.foods.forEach(food => {
+          historyHTML += `
+            <div class="food-item">
+              <div class="food-info">
+                <strong>${food.name}</strong> - ${food.amount}
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      historyHTML += '</div>';
+
+      if (historyRecord.analysis) {
+        const macros = historyRecord.analysis.macros || {};
+        
+        historyHTML += `
+          <h4>营养摄入</h4>
+          <div class="macro-stats">
+            <div class="macro-stat protein">
+              <h4>蛋白质</h4>
+              <p>${macros.protein || '未知'}</p>
+            </div>
+            <div class="macro-stat carbs">
+              <h4>碳水化合物</h4>
+              <p>${macros.carbs || '未知'}</p>
+            </div>
+            <div class="macro-stat fat">
+              <h4>脂肪</h4>
+              <p>${macros.fat || '未知'}</p>
+            </div>
+          </div>
+          <h4>分析结果</h4>
+          <div class="analysis-result">
+            ${historyRecord.analysis.result || '没有分析结果'}
+          </div>
+        `;
+      } else {
+        historyHTML += '<p>该日没有分析记录。</p>';
+      }
+
+      historyContentElement.innerHTML = historyHTML;
+    }
+
+    // 加载营养摄入统计
+    function loadStats(period) {
+      if (!appData.currentUser) return;
+
+      let startDate, endDate;
+      const today = new Date();
+      
+      // 确定日期范围
+      if (period === 'week') {
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 7);
+        endDate = today;
+      } else if (period === 'month') {
+        startDate = new Date(today);
+        startDate.setMonth(today.getMonth() - 1);
+        endDate = today;
+      } else {
+        return; // 自定义范围会通过 applyCustomDateRange 处理
+      }
+
+      renderStatsChart(startDate, endDate);
+    }
+
+    // 应用自定义日期范围
+    function applyCustomDateRange() {
+      const startDate = new Date(document.getElementById('start-date').value);
+      const endDate = new Date(document.getElementById('end-date').value);
+      
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        alert('请选择有效的开始和结束日期！');
+        return;
+      }
+      
+      if (startDate > endDate) {
+        alert('开始日期不能晚于结束日期！');
+        return;
+      }
+      
+      renderStatsChart(startDate, endDate);
+    }
+
+    // 渲染统计图表
+    function renderStatsChart(startDate, endDate) {
+      if (!appData.currentUser) return;
+
+      const userId = appData.currentUser.id;
+      const chartData = [];
+      const labels = [];
+      const proteinData = [];
+      const carbsData = [];
+      const fatData = [];
+
+      // 获取日期范围内的数据
+      let currentDate = new Date(startDate);
+      
+      while (currentDate <= endDate) {
+        const dateKey = currentDate.toISOString().split('T')[0];
+        const dietRecord = appData.dietHistory[dateKey];
+        
+        if (dietRecord && dietRecord.userId === userId && dietRecord.analysis) {
+          const macros = dietRecord.analysis.macros || {};
+          
+          labels.push(dateKey.slice(5)); // 月-日格式
+          
+          // 提取数值（去掉单位）
+          const proteinValue = macros.protein ? parseFloat(macros.protein.replace(/[^\d.]/g, '')) : 0;
+          const carbsValue = macros.carbs ? parseFloat(macros.carbs.replace(/[^\d.]/g, '')) : 0;
+          const fatValue = macros.fat ? parseFloat(macros.fat.replace(/[^\d.]/g, '')) : 0;
+          
+          proteinData.push(proteinValue);
+          carbsData.push(carbsValue);
+          fatData.push(fatValue);
+        }
+        
+        // 移动到下一天
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      // 如果没有数据
+      if (labels.length === 0) {
+        document.getElementById('macros-chart').style.display = 'none';
+        const statsTab = document.getElementById('stats-tab');
+        
+        if (!statsTab.querySelector('.no-data-message')) {
+          const noDataMsg = document.createElement('p');
+          noDataMsg.className = 'no-data-message';
+          noDataMsg.textContent = '所选时间范围内没有营养分析数据。';
+          statsTab.appendChild(noDataMsg);
+        }
+        
+        return;
+      }
+
+      // 删除可能存在的「无数据」消息
+      const noDataMsg = document.getElementById('stats-tab').querySelector('.no-data-message');
+      if (noDataMsg) {
+        noDataMsg.remove();
+      }
+
+      // 显示图表
+      document.getElementById('macros-chart').style.display = 'block';
+
+      // 绘制图表
+      const ctx = document.getElementById('macros-chart').getContext('2d');
+      
+      // 清除可能存在的旧图表
+      if (window.macrosChart) {
+        window.macrosChart.destroy();
+      }
+      
+      window.macrosChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: '蛋白质 (g)',
+              data: proteinData,
+              backgroundColor: 'rgba(255, 87, 34, 0.7)',
+              borderColor: 'rgba(255, 87, 34, 1)',
+              borderWidth: 1
+            },
+            {
+              label: '碳水化合物 (g)',
+              data: carbsData,
+              backgroundColor: 'rgba(33, 150, 243, 0.7)',
+              borderColor: 'rgba(33, 150, 243, 1)',
+              borderWidth: 1
+            },
+            {
+              label: '脂肪 (g)',
+              data: fatData,
+              backgroundColor: 'rgba(255, 193, 7, 0.7)',
+              borderColor: 'rgba(255, 193, 7, 1)',
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              stacked: false,
+              title: {
+                display: true,
+                text: '日期'
+              }
+            },
+            y: {
+              stacked: false,
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: '克 (g)'
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+            title: {
+              display: true,
+              text: '营养素摄入统计'
+            }
+          }
+        }
+      });
+    }
+
+    // 切换标签
+    function switchTab(tabId) {
+      // 更新标签状态
+      document.querySelectorAll('.tab').forEach(tab => {
+        if (tab.getAttribute('data-tab') === tabId) {
+          tab.classList.add('active');
+        } else {
+          tab.classList.remove('active');
+        }
+      });
+
+      // 更新内容可见性
+      document.querySelectorAll('.tab-content').forEach(content => {
+        if (content.id === `${tabId}-tab`) {
+          content.classList.add('active');
+        } else {
+          content.classList.remove('active');
+        }
+      });
+
+      // 特定标签的额外操作
+      if (tabId === 'history') {
+        // 默认显示今天的历史记录
+        document.getElementById('history-date').value = appData.currentDate;
+        loadHistoryForDate();
+      } else if (tabId === 'stats') {
+        // 默认加载一周的统计
+        document.getElementById('stats-period').value = 'week';
+        hideElement('custom-date-range');
+        loadStats('week');
+      }
+    }
+
+    // 初始化应用
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
