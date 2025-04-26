@@ -711,20 +711,7 @@
   <div id="overlay" class="overlay"></div>
 
   <script>
-    // Firebase配置
-const firebaseConfig = {
-  apiKey: "AIzaSyAfDQWHWfypZWDcMX4UBQvnAa0DORqZqGA",
-  authDomain: "record-77777.firebaseapp.com",
-  projectId: "record-77777",
-  storageBucket: "record-77777.firebasestorage.app",
-  messagingSenderId: "868320807699",
-  appId: "1:868320807699:web:2b18183fad5be8aaede8e6"
-};
 
-    // 初始化Firebase
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
 
     // 根据健身目标获取推荐的营养素比例
     function getNutritionRatiosByGoal(goal) {
@@ -2328,4 +2315,44 @@ function switchTab(tabId) {
 }
 
 // 初始化应用
-window.addEventListener('DOMContentLoaded', initApp);
+// 安全的初始化函数
+function initializeFirebaseAndApp() {
+  try {
+    // Firebase配置
+    const firebaseConfig = {
+      apiKey: "AIzaSyAfDQWHWfypZWDcMX4UBQvnAa0DORqZqGA",
+      authDomain: "record-77777.firebaseapp.com",
+      projectId: "record-77777",
+      storageBucket: "record-77777.firebasestorage.app",
+      messagingSenderId: "868320807699",
+      appId: "1:868320807699:web:2b18183fad5be8aaede8e6"
+    };
+
+    // 检查是否已初始化
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+      console.log('Firebase初始化成功');
+    }
+    
+    // 设置全局变量
+    window.auth = firebase.auth();
+    window.db = firebase.firestore();
+    
+    // 初始化应用
+    initApp();
+  } catch (error) {
+    console.error('Firebase初始化错误:', error);
+    alert('应用初始化失败，请刷新页面重试');
+  }
+}
+
+// 确保在DOM和Firebase都加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+  // 检查Firebase是否加载
+  if (typeof firebase !== 'undefined') {
+    initializeFirebaseAndApp();
+  } else {
+    console.error('Firebase SDK未加载');
+    alert('无法加载必要组件，请检查网络连接后刷新页面');
+  }
+});
