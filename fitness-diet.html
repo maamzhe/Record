@@ -810,7 +810,7 @@
     // 初始化应用
     function initApp() {
       // 设置身份验证状态监听器
-      auth.onAuthStateChanged(user => {
+      window.auth.onAuthStateChanged(user => {
         if (user) {
           // 用户已登录
           appData.firebaseUser = user;
@@ -866,7 +866,7 @@
         return;
       }
 
-      auth.createUserWithEmailAndPassword(email, password)
+      window.auth.createUserWithEmailAndPassword(email, password)
         .then(userCredential => {
           // 注册成功
           console.log('注册成功:', userCredential.user);
@@ -896,7 +896,7 @@
         return;
       }
 
-      auth.signInWithEmailAndPassword(email, password)
+      window.auth.signInWithEmailAndPassword(email, password)
         .then(userCredential => {
           // 登录成功
           console.log('登录成功:', userCredential.user);
@@ -916,7 +916,7 @@
     }
 
     function logoutUser() {
-      auth.signOut()
+      window.auth.signOut()
         .then(() => {
           // 登出成功
           console.log('用户已登出');
