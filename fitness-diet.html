@@ -2318,41 +2318,76 @@ function switchTab(tabId) {
 // 安全的初始化函数
 function initializeFirebaseAndApp() {
   try {
+    console.log('正在尝试初始化Firebase...');
+    
+    // 检查Firebase是否已加载
+    if (typeof firebase === 'undefined') {
+      throw new Error('Firebase SDK未加载，请确保正确添加了脚本标签');
+    }
+    
     // Firebase配置
     const firebaseConfig = {
       apiKey: "AIzaSyAfDQWHWfypZWDcMX4UBQvnAa0DORqZqGA",
       authDomain: "record-77777.firebaseapp.com",
       projectId: "record-77777",
-      storageBucket: "record-77777.firebasestorage.app",
+      storageBucket: "record-77777.appspot.com", // 修正了这个URL
       messagingSenderId: "868320807699",
       appId: "1:868320807699:web:2b18183fad5be8aaede8e6"
     };
 
     // 检查是否已初始化
     if (!firebase.apps.length) {
+      console.log('正在初始化新的Firebase应用...');
       firebase.initializeApp(firebaseConfig);
-      console.log('Firebase初始化成功');
+    } else {
+      console.log('Firebase已经初始化，使用现有应用');
     }
     
-    // 设置全局变量
-    window.auth = firebase.auth();
-    window.db = firebase.firestore();
-    
-    // 初始化应用
-    initApp();
+    // 验证初始化是否成功
+    if (firebase.apps.length > 0) {
+      console.log('Firebase初始化成功！');
+      
+      // 设置全局变量并进行错误处理
+      try {
+        window.auth = firebase.auth();
+        console.log('认证服务初始化成功');
+      } catch (authError) {
+        console.error('认证服务初始化错误:', authError);
+      }
+      
+      try {
+        window.db = firebase.firestore();
+        console.log('Firestore初始化成功');
+      } catch (dbError) {
+        console.error('Firestore初始化错误:', dbError);
+      }
+      
+      // 初始化应用
+      initApp();
+    } else {
+      throw new Error('尝试初始化后，Firebase应用列表为空');
+    }
   } catch (error) {
     console.error('Firebase初始化错误:', error);
-    alert('应用初始化失败，请刷新页面重试');
+    alert('应用初始化失败: ' + error.message);
   }
 }
 
-// 确保在DOM和Firebase都加载完成后初始化
+// 改进Firebase加载方式
 document.addEventListener('DOMContentLoaded', function() {
-  // 检查Firebase是否加载
-  if (typeof firebase !== 'undefined') {
-    initializeFirebaseAndApp();
-  } else {
-    console.error('Firebase SDK未加载');
-    alert('无法加载必要组件，请检查网络连接后刷新页面');
-  }
+  console.log('DOM已加载，正在检查Firebase可用性');
+  
+  // 更好的脚本加载处理方法
+  const checkFirebaseLoaded = function() {
+    if (typeof firebase !== 'undefined' && firebase.app) {
+      console.log('检测到Firebase SDK，正在进行初始化');
+      initializeFirebaseAndApp();
+    } else {
+      console.log('Firebase SDK尚未加载，500毫秒后重试...');
+      setTimeout(checkFirebaseLoaded, 500);
+    }
+  };
+  
+  // 开始检查Firebase是否已加载
+  checkFirebaseLoaded();
 });
