@@ -969,40 +969,40 @@
     }
 
     // 分析饮食
-    function analyzeDiet() {
-      if (!appData.currentUser) return;
+function analyzeDiet() {
+  if (!appData.currentUser) return;
 
-      const dateKey = appData.currentDate;
-      const dietRecord = appData.dietHistory[dateKey];
-      
-      if (!dietRecord || dietRecord.foods.length === 0) {
-        alert('请先添加今天摄入的食物！');
-        return;
-      }
+  const dateKey = appData.currentDate;
+  const dietRecord = appData.dietHistory[dateKey];
+  
+  if (!dietRecord || dietRecord.foods.length === 0) {
+    alert('请先添加今天摄入的食物！');
+    return;
+  }
 
-      // 显示加载状态
-      document.getElementById('loading').style.display = 'block';
+  // 显示加载状态
+  document.getElementById('loading').style.display = 'block';
 
-      // 准备发送给 DeepSeek API 的数据
-      const user = appData.currentUser;
-      const foods = dietRecord.foods;
-      
-      // 构建 prompt
-      const goalText = {
-        'bulking': '增肌',
-        'cutting': '减脂',
-        'maintain': '维持体重'
-      };
+  // 准备发送给 DeepSeek API 的数据
+  const user = appData.currentUser;
+  const foods = dietRecord.foods;
+  
+  // 构建 prompt
+  const goalText = {
+    'bulking': '增肌',
+    'cutting': '减脂',
+    'maintain': '维持体重'
+  };
 
-      const activityText = {
-        'sedentary': '久坐少动',
-        'light': '轻度活动',
-        'moderate': '中度活动',
-        'active': '高度活动',
-        'very-active': '非常活跃'
-      };
+  const activityText = {
+    'sedentary': '久坐少动',
+    'light': '轻度活动',
+    'moderate': '中度活动',
+    'active': '高度活动',
+    'very-active': '非常活跃'
+  };
 
-      const prompt = `
+  const prompt = `
 我需要你分析一下我今天的饮食情况，并给出建议。
 
 我的个人信息：
@@ -1025,41 +1025,37 @@ ${foods.map(food => `- ${food.name} ${food.amount}`).join('\n')}
 请给出清晰、具体的回答，并尽量给出精确的数值。
 `;
 
-      // 模拟调用 DeepSeek API（实际项目中需要替换为真实的 API 调用）
-      simulateDeepSeekAPI(prompt)
-        .then(response => {
-          // 隐藏加载状态
-          document.getElementById('loading').style.display = 'none';
-          
-          // 更新分析结果
-          const analysisResult = response.text;
-          
-          appData.dietHistory[dateKey].analysis = {
-            timestamp: new Date().toISOString(),
-            result: analysisResult,
-            // 这里可以添加解析出的蛋白质、碳水和脂肪的数值
-            macros: extractMacrosFromAnalysis(analysisResult)
-          };
-          
-          saveDataToStorage();
-          
-          // 显示分析结果
-          document.getElementById('analysis-result').textContent = analysisResult;
-          
-          // 更新宏量素数值
-          const macros = appData.dietHistory[dateKey].analysis.macros;
-          document.getElementById('protein-value').textContent = macros.protein || '未知';
-          document.getElementById('carbs-value').textContent = macros.carbs || '未知';
-          document.getElementById('fat-value').textContent = macros.fat || '未知';
-          
-          // 切换到分析结果标签
-          switchTab('analysis');
-        })
-        .catch(error => {
-          document.getElementById('loading').style.display = 'none';
-          alert('分析出错: ' + error.message);
-        });
-    }
+  // 调用DeepSeek API
+  callDeepSeekAPI(prompt)
+    .then(response => {
+      // 更新分析结果
+      const analysisResult = response.text;
+      
+      appData.dietHistory[dateKey].analysis = {
+        timestamp: new Date().toISOString(),
+        result: analysisResult,
+        macros: extractMacrosFromAnalysis(analysisResult)
+      };
+      
+      saveDataToStorage();
+      
+      // 显示分析结果
+      document.getElementById('analysis-result').textContent = analysisResult;
+      
+      // 更新宏量素数值
+      const macros = appData.dietHistory[dateKey].analysis.macros;
+      document.getElementById('protein-value').textContent = macros.protein || '未知';
+      document.getElementById('carbs-value').textContent = macros.carbs || '未知';
+      document.getElementById('fat-value').textContent = macros.fat || '未知';
+      
+      // 切换到分析结果标签
+      switchTab('analysis');
+    })
+    .catch(error => {
+      document.getElementById('loading').style.display = 'none';
+      alert('分析出错: ' + error.message);
+    });
+}
 
     // 从分析结果中提取三大宏量素数值
     function extractMacrosFromAnalysis(analysisText) {
