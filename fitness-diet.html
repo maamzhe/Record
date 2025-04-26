@@ -940,7 +940,7 @@
       
       try {
         // 加载用户列表
-        const usersSnapshot = await window.window.db.collection('users')
+        const usersSnapshot = await window.db.collection('users')
           .where('ownerUid', '==', appData.firebaseUser.uid)
           .get();
         
@@ -953,7 +953,7 @@
         });
 
         // 加载常用食物
-        const foodsSnapshot = await window.window.db.collection('frequentFoods')
+        const foodsSnapshot = await window.db.collection('frequentFoods')
           .where('ownerUid', '==', appData.firebaseUser.uid)
           .get();
         
@@ -980,7 +980,7 @@
       updateSyncStatus('正在加载饮食记录...');
       
       try {
-        const historySnapshot = await window.window.db.collection('dietHistory')
+        const historySnapshot = await window.db.collection('dietHistory')
           .where('userId', '==', userId)
           .where('ownerUid', '==', appData.firebaseUser.uid)
           .get();
@@ -1013,7 +1013,7 @@
       if (userData.id && userData.id.length > 0) {
         // 如果是现有用户，有id，则更新
         try {
-          await window.window.db.collection('users').doc(userData.id).update(userData);
+          await window.db.collection('users').doc(userData.id).update(userData);
           updateSyncStatus('用户资料已更新');
         } catch (error) {
           console.error('更新用户出错:', error);
@@ -1022,7 +1022,7 @@
       } else {
         // 新用户，创建文档
         try {
-          const docRef = await window.window.db.collection('users').add(userData);
+          const docRef = await window.db.collection('users').add(userData);
           userData.id = docRef.id; // 获取Firestore生成的ID
           updateSyncStatus('新用户已创建');
         } catch (error) {
@@ -1042,9 +1042,9 @@
       
       try {
         if (foodData.id && foodData.id.length > 0) {
-          await window.window.db.collection('frequentFoods').doc(foodData.id).update(foodData);
+          await window.db.collection('frequentFoods').doc(foodData.id).update(foodData);
         } else {
-          const docRef = await window.window.db.collection('frequentFoods').add(foodData);
+          const docRef = await window.db.collection('frequentFoods').add(foodData);
           foodData.id = docRef.id;
         }
         updateSyncStatus('常用食物已保存');
@@ -1065,9 +1065,9 @@
       
       try {
         if (recordData.id && recordData.id.length > 0) {
-          await window.window.db.collection('dietHistory').doc(recordData.id).update(recordData);
+          await window.db.collection('dietHistory').doc(recordData.id).update(recordData);
         } else {
-          const docRef = await window.window.db.collection('dietHistory').add(recordData);
+          const docRef = await window.db.collection('dietHistory').add(recordData);
           recordData.id = docRef.id;
         }
         updateSyncStatus('饮食记录已保存');
@@ -1095,7 +1095,7 @@
         foods.splice(index, 1);
         
         // 更新Firestore文档
-        await window.window.db.collection('dietHistory').doc(record.id).update({
+        await window.db.collection('dietHistory').doc(record.id).update({
           foods: foods
         });
         
