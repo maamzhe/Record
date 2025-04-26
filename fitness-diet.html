@@ -1080,64 +1080,58 @@ ${foods.map(food => `- ${food.name} ${food.amount}`).join('\n')}
       return macros;
     }
 
-    // 模拟 DeepSeek API 调用（实际项目中需要替换为真实的 API 调用）
-    function simulateDeepSeekAPI(prompt) {
-      return new Promise((resolve, reject) => {
-        // 模拟 API 延迟
-        setTimeout(() => {
-          // 模拟分析结果
-          const result = {
-            text: `
-根据你提供的信息，我来分析一下你今天的饮食情况：
-
-1. 每日营养需求：
-
-基于你的身高、体重、年龄、性别和活动水平，你的大致每日营养需求如下：
-- 热量：约2100-2300卡路里
-- 蛋白质：135-150g（每公斤体重1.8-2.0g，适合增肌目标）
-- 碳水化合物：210-250g（占总热量的40-45%）
-- 脂肪：60-70g（占总热量的25-30%）
-
-2. 今日摄入估计：
-
-根据你列出的食物，估计你今日摄入：
-- 蛋白质：约110g
-- 碳水化合物：约180g
-- 脂肪：约55g
-- 总热量：约1650卡路里
-
-3. 营养素平衡分析：
-
-- 蛋白质：略低于你的增肌目标需要量（还差约25-40g）
-- 碳水化合物：低于理想水平（还差约30-70g）
-- 脂肪：接近理想水平，但略低（还差约5-15g）
-- 总热量：比你的需求少了约450-650卡路里
-
-4. 改进建议：
-
-为了更好地支持你的增肌目标，建议：
-
-1) 增加蛋白质摄入：
-   - 可以添加一份蛋白质奶昔（25-30g蛋白质）
-   - 增加一个鸡蛋（约6g蛋白质）
-   - 或再加100g的鸡胸肉（约25g蛋白质）
-
-2) 适当增加碳水化合物：
-   - 添加一份中等大小的红薯（约30g碳水）
-   - 或增加半碗米饭（约25g碳水）
-   - 适量全谷物面包（2片约30g碳水）
-
-3) 适当补充健康脂肪：
-   - 可以增加少量坚果（如10-15粒杏仁，提供约7-8g健康脂肪）
-   - 或者半个牛油果（约10g健康脂肪）
-
-总体来说，你的饮食构成比例接近合理，但总量不足以支持增肌目标。建议在保持当前饮食质量的基础上，适当增加总体食物摄入量，尤其是优质蛋白质和复合碳水化合物的来源。
-            `
-          };
-          resolve(result);
-        }, 2000);
-      });
+    // 使用OpenAI SDK调用DeepSeek API
+async function callDeepSeekAPI(prompt) {
+  // 显示加载状态
+  document.getElementById('loading').style.display = 'block';
+  
+  try {
+    // 这里您需要填写自己的DeepSeek API密钥
+    const apiKey = "sk-a28c877db7584f8a889945a00538ff7b";  // 请替换为您的API密钥
+    
+    // 创建一个新的fetch请求
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat", // 使用DeepSeek-V3模型
+        messages: [
+          {
+            role: "system",
+            content: "你是一位专业的健身和营养师，擅长分析饮食和提供营养建议。请根据用户提供的信息，分析其每日营养摄入情况并给出具体建议。"
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.3 // DeepSeek API推荐的温度值
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API错误: ${response.status} ${response.statusText}`);
     }
+    
+    const result = await response.json();
+    
+    // 隐藏加载状态
+    document.getElementById('loading').style.display = 'none';
+    
+    // 返回分析结果
+    return {
+      text: result.choices[0].message.content
+    };
+  } catch (error) {
+    // 隐藏加载状态
+    document.getElementById('loading').style.display = 'none';
+    console.error("调用DeepSeek API出错:", error);
+    throw error;
+  }
+}
 
     // 加载指定日期的历史记录
     function loadHistoryForDate() {
