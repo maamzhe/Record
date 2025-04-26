@@ -477,6 +477,7 @@
       <button id="cancel-new-user-btn" class="btn btn-secondary">取消</button>
     </div>
   </div>
+      
 
   <!-- 编辑个人信息 Modal -->
   <div id="edit-profile-modal" class="modal">
@@ -1229,7 +1230,7 @@ ${foods.map(food => `- ${food.name} ${food.amount}`).join('\n')}
           const analysisResult = response.text;
           
           // 提取营养素数据并生成表格
-          const nutritionData = extractNutritionData(analysisResult);
+          const nutritionData = (analysisResult);
           
           appData.dietHistory[dateKey].analysis = {
             timestamp: new Date().toISOString(),
@@ -1269,100 +1270,83 @@ ${foods.map(food => `- ${food.name} ${food.amount}`).join('\n')}
     }
 
     // 从分析结果中提取营养数据
-    function extractNutritionData(analysisText) {
-      // 初始化提取的数据
-      const data = {
-        recommendedProtein: '未知',
-        recommendedCarbs: '未知',
-        recommendedFat: '未知',
-        todayProtein: '未知',
-        todayCarbs: '未知',
-        todayFat: '未知',
-        proteinSuggestion: '未知',
-        carbsSuggestion: '未知',
-        fatSuggestion: '未知'
-      };
+function extractNutritionData(analysisText) {
+  // 初始化提取的数据
+  const data = {
+    recommendedProtein: '未知',
+    recommendedCarbs: '未知',
+    recommendedFat: '未知',
+    todayProtein: '未知',
+    todayCarbs: '未知',
+    todayFat: '未知',
+    proteinSuggestion: '未知',
+    carbsSuggestion: '未知',
+    fatSuggestion: '未知'
+  };
 
-      // 尝试提取每日推荐摄入量
-      const recommendedMatch = analysisText.match(/推荐每日摄入量[：:]\s*蛋白质(\d+\.?\d*)g[，,]\s*碳水化合物(\d+\.?\d*)g[，,]\s*脂肪(\d+\.?\d*)g/i);
-      if (recommendedMatch) {
-        data.recommendedProtein = recommendedMatch[1] + 'g';
-        data.recommendedCarbs = recommendedMatch[2] + 'g';
-        data.recommendedFat = recommendedMatch[3] + 'g';
-      }
+  // 尝试提取推荐蛋白质摄入量 - 处理范围格式 (如 "120-150g")
+  const proteinRecommendMatch = analysisText.match(/蛋白质：\s*(\d+)-(\d+)g/i);
+  if (proteinRecommendMatch) {
+    const avg = Math.round((parseInt(proteinRecommendMatch[1]) + parseInt(proteinRecommendMatch[2])) / 2);
+    data.recommendedProtein = avg + 'g';
+  }
 
-      // 尝试提取今日已摄入量
-      const todayMatch = analysisText.match(/今日已摄入量[：:]\s*蛋白质(\d+\.?\d*)g[，,]\s*碳水化合物(\d+\.?\d*)g[，,]\s*脂肪(\d+\.?\d*)g/i);
-      if (todayMatch) {
-        data.todayProtein = todayMatch[1] + 'g';
-        data.todayCarbs = todayMatch[2] + 'g';
-        data.todayFat = todayMatch[3] + 'g';
-      }
+  // 尝试提取推荐碳水化合物摄入量
+  const carbsRecommendMatch = analysisText.match(/碳水化合物：\s*(\d+)-(\d+)g/i);
+  if (carbsRecommendMatch) {
+    const avg = Math.round((parseInt(carbsRecommendMatch[1]) + parseInt(carbsRecommendMatch[2])) / 2);
+    data.recommendedCarbs = avg + 'g';
+  }
 
-      // 尝试提取今日建议
-      // 蛋白质建议
-      const proteinSuggestionMatch = analysisText.match(/蛋白质[（(]\+(\d+\.?\d*)g|蛋白质[（(]超标(\d+\.?\d*)g/i);
-      if (proteinSuggestionMatch) {
-        if (proteinSuggestionMatch[1]) {
-          data.proteinSuggestion = '+' + proteinSuggestionMatch[1] + 'g';
-        } else if (proteinSuggestionMatch[2]) {
-          data.proteinSuggestion = '超标' + proteinSuggestionMatch[2] + 'g';
-        }
-      }
+  // 尝试提取推荐脂肪摄入量
+  const fatRecommendMatch = analysisText.match(/脂肪：\s*(\d+)-(\d+)g/i);
+  if (fatRecommendMatch) {
+    const avg = Math.round((parseInt(fatRecommendMatch[1]) + parseInt(fatRecommendMatch[2])) / 2);
+    data.recommendedFat = avg + 'g';
+  }
 
-      // 碳水化合物建议
-      const carbsSuggestionMatch = analysisText.match(/碳水化合物[（(]\+(\d+\.?\d*)g|碳水化合物[（(]超标(\d+\.?\d*)g/i);
-      if (carbsSuggestionMatch) {
-        if (carbsSuggestionMatch[1]) {
-          data.carbsSuggestion = '+' + carbsSuggestionMatch[1] + 'g';
-        } else if (carbsSuggestionMatch[2]) {
-          data.carbsSuggestion = '超标' + carbsSuggestionMatch[2] + 'g';
-        }
-      }
+  // 尝试提取当日总摄入量
+  const totalMatch = analysisText.match(/总计：[^，]*，\s*(\d+)g蛋白质，\s*(\d+)g碳水，\s*(\d+)g脂肪/i);
+  if (totalMatch) {
+    data.todayProtein = totalMatch[1] + 'g';
+    data.todayCarbs = totalMatch[2] + 'g';
+    data.todayFat = totalMatch[3] + 'g';
+  }
 
-      // 脂肪建议
-      const fatSuggestionMatch = analysisText.match(/脂肪[（(]\+(\d+\.?\d*)g|脂肪[（(]超标(\d+\.?\d*)g/i);
-      if (fatSuggestionMatch) {
-        if (fatSuggestionMatch[1]) {
-          data.fatSuggestion = '+' + fatSuggestionMatch[1] + 'g';
-        } else if (fatSuggestionMatch[2]) {
-          data.fatSuggestion = '超标' + fatSuggestionMatch[2] + 'g';
-        }
-      }
+  // 尝试提取今日建议 - 蛋白质
+  const proteinSuggestionMatch = analysisText.match(/蛋白质：\s*\+(\d+)-(\d+)g/i);
+  if (proteinSuggestionMatch) {
+    const avg = Math.round((parseInt(proteinSuggestionMatch[1]) + parseInt(proteinSuggestionMatch[2])) / 2);
+    data.proteinSuggestion = '+' + avg + 'g';
+  }
 
-      // 如果上面的正则匹配失败，尝试更通用的提取方式
-      if (data.recommendedProtein === '未知') {
-        const proteinRecommendedMatch = analysisText.match(/每日[需要摄入|应摄入|推荐摄入].*蛋白质[：:]\s*(\d+\.?\d*)\s*[克g]/i);
-        if (proteinRecommendedMatch) data.recommendedProtein = proteinRecommendedMatch[1] + 'g';
-      }
+  // 尝试提取今日建议 - 碳水
+  const carbsSuggestionMatch = analysisText.match(/碳水化合物：\s*\+(\d+)-(\d+)g/i);
+  if (carbsSuggestionMatch) {
+    const avg = Math.round((parseInt(carbsSuggestionMatch[1]) + parseInt(carbsSuggestionMatch[2])) / 2);
+    data.carbsSuggestion = '+' + avg + 'g';
+  }
 
-      if (data.recommendedCarbs === '未知') {
-        const carbsRecommendedMatch = analysisText.match(/每日[需要摄入|应摄入|推荐摄入].*碳水化合物[：:]\s*(\d+\.?\d*)\s*[克g]/i);
-        if (carbsRecommendedMatch) data.recommendedCarbs = carbsRecommendedMatch[1] + 'g';
-      }
+  // 尝试提取今日建议 - 脂肪
+  const fatSuggestionMatch = analysisText.match(/脂肪：\s*\+(\d+)-(\d+)g/i);
+  if (fatSuggestionMatch) {
+    const avg = Math.round((parseInt(fatSuggestionMatch[1]) + parseInt(fatSuggestionMatch[2])) / 2);
+    data.fatSuggestion = '+' + avg + 'g';
+  }
 
-      if (data.recommendedFat === '未知') {
-        const fatRecommendedMatch = analysisText.match(/每日[需要摄入|应摄入|推荐摄入].*脂肪[：:]\s*(\d+\.?\d*)\s*[克g]/i);
-        if (fatRecommendedMatch) data.recommendedFat = fatRecommendedMatch[1] + 'g';
-      }
+  // 回退方案 - 如果上面的正则没有匹配成功，尝试其他模式
+  if (data.recommendedProtein === '未知') {
+    const altProteinMatch = analysisText.match(/蛋白质[：:]\s*(\d+\.?\d*)\s*[克g]/i);
+    if (altProteinMatch) data.recommendedProtein = altProteinMatch[1] + 'g';
+  }
 
-      if (data.todayProtein === '未知') {
-        const proteinTodayMatch = analysisText.match(/今日摄入.*蛋白质[：:]\s*(\d+\.?\d*)\s*[克g]/i);
-        if (proteinTodayMatch) data.todayProtein = proteinTodayMatch[1] + 'g';
-      }
+  if (data.todayProtein === '未知') {
+    const altProteinTodayMatch = analysisText.match(/(\d+)g蛋白质/i);
+    if (altProteinTodayMatch) data.todayProtein = altProteinTodayMatch[1] + 'g';
+  }
 
-      if (data.todayCarbs === '未知') {
-        const carbsTodayMatch = analysisText.match(/今日摄入.*碳水化合物[：:]\s*(\d+\.?\d*)\s*[克g]/i);
-        if (carbsTodayMatch) data.todayCarbs = carbsTodayMatch[1] + 'g';
-      }
-
-      if (data.todayFat === '未知') {
-        const fatTodayMatch = analysisText.match(/今日摄入.*脂肪[：:]\s*(\d+\.?\d*)\s*[克g]/i);
-        if (fatTodayMatch) data.todayFat = fatTodayMatch[1] + 'g';
-      }
-
-      return data;
-    }
+  return data;
+}
 
     // 显示分析结果表格
     function displayAnalysisTable(data) {
