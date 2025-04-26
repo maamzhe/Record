@@ -1383,66 +1383,71 @@ ${foods.map(food => `- ${food.name} ${food.amount}`).join('\n')}
     }
 
     // 显示分析结果表格
-    function displayAnalysisTable(data) {
-      if (!appData.currentUser || !appData.authenticated) return;
+function displayAnalysisTable(data) {
+  if (!appData.currentUser || !appData.authenticated) return;
 
-      const tableContainer = document.getElementById('analysis-table-container');
-      const summaryContainer = document.getElementById('analysis-summary');
-      
-      // 用户基本信息
-      const user = appData.currentUser;
-      const goalText = {
-        'bulking': '增肌',
-        'cutting': '减脂',
-        'maintain': '维持'
-      };
+  const tableContainer = document.getElementById('analysis-table-container');
+  const summaryContainer = document.getElementById('analysis-summary');
+  
+  // 用户基本信息
+  const user = appData.currentUser;
+  const goalText = {
+    'bulking': '增肌',
+    'cutting': '减脂',
+    'maintain': '维持'
+  };
 
-      // 生成基本信息摘要
-      summaryContainer.innerHTML = `
-        <p>
-          <strong>日期:</strong> ${formatDate(appData.currentDate)} | 
-          <strong>用户:</strong> ${user.username} | 
-          <strong>身高/体重:</strong> ${user.height}cm/${user.weight}kg | 
-          <strong>目标:</strong> ${goalText[user.goal]}
-        </p>
-      `;
-      
-      // 生成营养分析表格
-      let tableHTML = `
-        <table class="analysis-table">
-          <thead>
-            <tr>
-              <th>营养素</th>
-              <th>今日摄入</th>
-              <th>每日建议</th>
-              <th>今日建议</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="nutrient-row protein-row">
-              <td>蛋白质</td>
-              <td>${data.todayProtein}</td>
-              <td>${data.recommendedProtein}</td>
-              <td class="${data.proteinSuggestion.includes('+') ? 'positive-suggestion' : 'negative-suggestion'}">${data.proteinSuggestion}</td>
-            </tr>
-            <tr class="nutrient-row carbs-row">
-              <td>碳水化合物</td>
-              <td>${data.todayCarbs}</td>
-              <td>${data.recommendedCarbs}</td>
-              <td class="${data.carbsSuggestion.includes('+') ? 'positive-suggestion' : 'negative-suggestion'}">${data.carbsSuggestion}</td>
-            </tr>
-            <tr class="nutrient-row fat-row">
-              <td>脂肪</td>
-              <td>${data.todayFat}</td>
-              <td>${data.recommendedFat}</td>
-              <td class="${data.fatSuggestion.includes('+') ? 'positive-suggestion' : 'negative-suggestion'}">${data.fatSuggestion}</td>
-            </tr>
-          </tbody>
-        </table>
-      `;
-      
-      tableContainer.innerHTML = tableHTML;
-    }
+  // 生成基本信息摘要
+  summaryContainer.innerHTML = `
+    <p>
+      <strong>日期:</strong> ${formatDate(appData.currentDate)} | 
+      <strong>用户:</strong> ${user.username} | 
+      <strong>身高/体重:</strong> ${user.height}cm/${user.weight}kg | 
+      <strong>目标:</strong> ${goalText[user.goal]}
+    </p>
+  `;
+  
+  // 安全检查函数 - 检查是否包含特定字符串
+  const safeIncludes = (str, searchValue) => {
+    return typeof str === 'string' && str.includes(searchValue);
+  };
+  
+  // 生成营养分析表格
+  let tableHTML = `
+    <table class="analysis-table">
+      <thead>
+        <tr>
+          <th>营养素</th>
+          <th>今日摄入</th>
+          <th>每日建议</th>
+          <th>今日建议</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="nutrient-row protein-row">
+          <td>蛋白质</td>
+          <td>${data.todayProtein || '未知'}</td>
+          <td>${data.recommendedProtein || '未知'}</td>
+          <td class="${safeIncludes(data.proteinSuggestion, '+') ? 'positive-suggestion' : 'negative-suggestion'}">${data.proteinSuggestion || '未知'}</td>
+        </tr>
+        <tr class="nutrient-row carbs-row">
+          <td>碳水化合物</td>
+          <td>${data.todayCarbs || '未知'}</td>
+          <td>${data.recommendedCarbs || '未知'}</td>
+          <td class="${safeIncludes(data.carbsSuggestion, '+') ? 'positive-suggestion' : 'negative-suggestion'}">${data.carbsSuggestion || '未知'}</td>
+        </tr>
+        <tr class="nutrient-row fat-row">
+          <td>脂肪</td>
+          <td>${data.todayFat || '未知'}</td>
+          <td>${data.recommendedFat || '未知'}</td>
+          <td class="${safeIncludes(data.fatSuggestion, '+') ? 'positive-suggestion' : 'negative-suggestion'}">${data.fatSuggestion || '未知'}</td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+  
+  tableContainer.innerHTML = tableHTML;
+}
 
     // 使用OpenAI SDK调用DeepSeek API
     async function callDeepSeekAPI(prompt) {
@@ -1498,93 +1503,98 @@ ${foods.map(food => `- ${food.name} ${food.amount}`).join('\n')}
     }
 
     // 加载指定日期的历史记录
-    function loadHistoryForDate() {
-      if (!appData.currentUser || !appData.authenticated) return;
+function loadHistoryForDate() {
+  if (!appData.currentUser || !appData.authenticated) return;
 
-      const dateKey = document.getElementById('history-date').value;
-      const historyContentElement = document.getElementById('history-content');
-      
-      if (!dateKey) {
-        historyContentElement.innerHTML = '<p>请选择日期查看历史记录。</p>';
-        return;
-      }
+  const dateKey = document.getElementById('history-date').value;
+  const historyContentElement = document.getElementById('history-content');
+  
+  if (!dateKey) {
+    historyContentElement.innerHTML = '<p>请选择日期查看历史记录。</p>';
+    return;
+  }
 
-      const historyRecord = appData.dietHistory[dateKey];
-      
-      if (!historyRecord || historyRecord.userId !== appData.currentUser.id) {
-        historyContentElement.innerHTML = '<p>所选日期没有饮食记录。</p>';
-        return;
-      }
+  const historyRecord = appData.dietHistory[dateKey];
+  
+  if (!historyRecord || historyRecord.userId !== appData.currentUser.id) {
+    historyContentElement.innerHTML = '<p>所选日期没有饮食记录。</p>';
+    return;
+  }
 
-      let historyHTML = `
-        <h4>食物记录 - ${formatDate(dateKey)}</h4>
-        <div class="food-list">
-      `;
+  let historyHTML = `
+    <h4>食物记录 - ${formatDate(dateKey)}</h4>
+    <div class="food-list">
+  `;
 
-      if (historyRecord.foods.length === 0) {
-        historyHTML += '<p>该日没有记录食物。</p>';
-      } else {
-        historyRecord.foods.forEach(food => {
-          historyHTML += `
-            <div class="food-item">
-              <div class="food-info">
-                <strong>${food.name}</strong> - ${food.amount}
-              </div>
-            </div>
-          `;
-        });
-      }
-
-      historyHTML += '</div>';
-
-      if (historyRecord.analysis) {
-        const macros = historyRecord.analysis.macros || {};
-        const recommended = historyRecord.analysis.recommended || {};
-        const suggestions = historyRecord.analysis.suggestions || {};
-        
-        historyHTML += `
-          <h4>营养分析</h4>
-          <table class="analysis-table">
-            <thead>
-              <tr>
-                <th>营养素</th>
-                <th>当日摄入</th>
-                <th>每日建议</th>
-                <th>当日建议</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="nutrient-row protein-row">
-                <td>蛋白质</td>
-                <td>${macros.protein || '未知'}</td>
-                <td>${recommended.protein || '未知'}</td>
-                <td class="${(suggestions.protein && suggestions.protein.includes('+')) ? 'positive-suggestion' : 'negative-suggestion'}">${suggestions.protein || '未知'}</td>
-              </tr>
-              <tr class="nutrient-row carbs-row">
-                <td>碳水化合物</td>
-                <td>${macros.carbs || '未知'}</td>
-                <td>${recommended.carbs || '未知'}</td>
-                <td class="${(suggestions.carbs && suggestions.carbs.includes('+')) ? 'positive-suggestion' : 'negative-suggestion'}">${suggestions.carbs || '未知'}</td>
-              </tr>
-              <tr class="nutrient-row fat-row">
-                <td>脂肪</td>
-                <td>${macros.fat || '未知'}</td>
-                <td>${recommended.fat || '未知'}</td>
-                <td class="${(suggestions.fat && suggestions.fat.includes('+')) ? 'positive-suggestion' : 'negative-suggestion'}">${suggestions.fat || '未知'}</td>
-              </tr>
-            </tbody>
-          </table>
-          <h4>详细分析</h4>
-          <div class="analysis-result">
-            ${historyRecord.analysis.result || '没有分析结果'}
+  if (historyRecord.foods.length === 0) {
+    historyHTML += '<p>该日没有记录食物。</p>';
+  } else {
+    historyRecord.foods.forEach(food => {
+      historyHTML += `
+        <div class="food-item">
+          <div class="food-info">
+            <strong>${food.name}</strong> - ${food.amount}
           </div>
-        `;
-      } else {
-        historyHTML += '<p>该日没有分析记录。</p>';
-      }
+        </div>
+      `;
+    });
+  }
 
-      historyContentElement.innerHTML = historyHTML;
-    }
+  historyHTML += '</div>';
+
+  // 安全检查函数 - 检查是否包含特定字符串
+  const safeIncludes = (str, searchValue) => {
+    return typeof str === 'string' && str.includes(searchValue);
+  };
+
+  if (historyRecord.analysis) {
+    const macros = historyRecord.analysis.macros || {};
+    const recommended = historyRecord.analysis.recommended || {};
+    const suggestions = historyRecord.analysis.suggestions || {};
+    
+    historyHTML += `
+      <h4>营养分析</h4>
+      <table class="analysis-table">
+        <thead>
+          <tr>
+            <th>营养素</th>
+            <th>当日摄入</th>
+            <th>每日建议</th>
+            <th>当日建议</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="nutrient-row protein-row">
+            <td>蛋白质</td>
+            <td>${macros.protein || '未知'}</td>
+            <td>${recommended.protein || '未知'}</td>
+            <td class="${safeIncludes(suggestions.protein, '+') ? 'positive-suggestion' : 'negative-suggestion'}">${suggestions.protein || '未知'}</td>
+          </tr>
+          <tr class="nutrient-row carbs-row">
+            <td>碳水化合物</td>
+            <td>${macros.carbs || '未知'}</td>
+            <td>${recommended.carbs || '未知'}</td>
+            <td class="${safeIncludes(suggestions.carbs, '+') ? 'positive-suggestion' : 'negative-suggestion'}">${suggestions.carbs || '未知'}</td>
+          </tr>
+          <tr class="nutrient-row fat-row">
+            <td>脂肪</td>
+            <td>${macros.fat || '未知'}</td>
+            <td>${recommended.fat || '未知'}</td>
+            <td class="${safeIncludes(suggestions.fat, '+') ? 'positive-suggestion' : 'negative-suggestion'}">${suggestions.fat || '未知'}</td>
+          </tr>
+        </tbody>
+      </table>
+      <h4>详细分析</h4>
+      <div class="analysis-result">
+        ${historyRecord.analysis.result || '没有分析结果'}
+      </div>
+    `;
+  } else {
+    historyHTML += '<p>该日没有分析记录。</p>';
+  }
+
+  historyContentElement.innerHTML = historyHTML;
+}
 
     // 加载营养摄入统计
     function loadStats(period) {
